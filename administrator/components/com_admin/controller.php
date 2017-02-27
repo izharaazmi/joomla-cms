@@ -16,4 +16,5 @@ defined('_JEXEC') or die;
  */
 class AdminController extends JControllerLegacy
 {
+	protected $default_view = 'sysinfo';
 }

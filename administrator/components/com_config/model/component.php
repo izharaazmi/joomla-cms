@@ -60,15 +60,19 @@ class ConfigModelComponent extends ConfigModelForm
 		$state = $this->getState();
 		$option = $state->get('component.option');
 
-		if ($path = $state->get('component.path'))
+		if (!($path = $state->get('component.path')))
 		{
-			// Add the search path for the admin component config.xml file.
-			JForm::addFormPath($path);
+			$path = JPATH_ADMINISTRATOR . '/components/' . $option;
 		}
-		else
+
+		// Add the search path for the admin component config.xml file.
+		$paths = JFormHelper::addFormPath($path);
+		$path  = JPath::find($paths, 'config.xml');
+
+		// Get the form.
+		if (!$path)
 		{
-			// Add the search path for the admin component config.xml file.
-			JForm::addFormPath(JPATH_ADMINISTRATOR . '/components/' . $option);
+			return false;
 		}
 
 		// Get the form.
@@ -109,7 +113,7 @@ class ConfigModelComponent extends ConfigModelForm
 		$lang->load($option, JPATH_BASE, null, false, true)
 		|| $lang->load($option, JPATH_BASE . "/components/$option", null, false, true);
 
-		$result = JComponentHelper::getComponent($option);
+		$result = JComponentHelper::getComponent($option, true);
 
 		return $result;
 	}

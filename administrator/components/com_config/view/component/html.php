@@ -37,8 +37,14 @@ class ConfigViewComponentHtml extends ConfigViewCmsHtml
 
 		try
 		{
-			$form = $this->model->getForm();
 			$component = $this->model->getComponent();
+
+			if (!$component->enabled)
+			{
+				return false;
+			}
+
+			$form = $this->model->getForm();
 			$user = JFactory::getUser();
 		}
 		catch (Exception $e)
@@ -49,13 +55,16 @@ class ConfigViewComponentHtml extends ConfigViewCmsHtml
 		}
 
 		// Bind the form to the data.
-		if ($form && $component->params)
+		if ($form)
 		{
-			$form->bind($component->params);
-		}
+			if ($component->params)
+			{
+				$form->bind($component->params);
+			}
 
-		$this->fieldsets   = $form->getFieldsets();
-		$this->formControl = $form->getFormControl();
+			$this->fieldsets   = $form->getFieldsets();
+			$this->formControl = $form->getFormControl();
+		}
 
 		// Don't show permissions fieldset if not authorised.
 		if (!$user->authorise('core.admin', $component->option) && isset($this->fieldsets['permissions']))
@@ -86,10 +95,26 @@ class ConfigViewComponentHtml extends ConfigViewCmsHtml
 	 */
 	protected function addToolbar()
 	{
-		JToolbarHelper::title(JText::_($this->component->option . '_configuration'), 'equalizer config');
-		JToolbarHelper::apply('config.save.component.apply');
-		JToolbarHelper::save('config.save.component.save');
-		JToolbarHelper::divider();
+		$lang    = JFactory::getLanguage();
+		$langKey = $this->component->option . '_configuration';
+
+		if ($lang->hasKey($langKey))
+		{
+			JToolbarHelper::title(JText::_($langKey), 'equalizer config');
+		}
+		else
+		{
+			$component = JText::_($this->component->option);
+			JToolbarHelper::title(JText::sprintf('COM_CONFIG_COMPONENT_CONFIG_OPTION_PREFIX', $component), 'equalizer config');
+		}
+
+		if ($this->form)
+		{
+			JToolbarHelper::apply('config.save.component.apply');
+			JToolbarHelper::save('config.save.component.save');
+			JToolbarHelper::divider();
+		}
+
 		JToolbarHelper::cancel('config.cancel.component');
 		JToolbarHelper::divider();
 		JToolbarHelper::help('JHELP_COMPONENTS_' . $this->currentComponent . '_OPTIONS');
