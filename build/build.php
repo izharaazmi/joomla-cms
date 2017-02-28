@@ -40,8 +40,8 @@ $stability   = JVersion::DEV_STATUS;
 $fullVersion = $version . '.' . $release;
 
 // Shortcut the paths to the repository root and build folder
-$repo = dirname(__DIR__);
 $here = __DIR__;
+$repo = dirname(__DIR__);
 
 // Set paths for the build packages
 $tmp      = $here . '/tmp';
@@ -50,8 +50,8 @@ $fullpath = $tmp . '/' . $fullVersion;
 echo "Start build for version $fullVersion.\n";
 echo "Delete old release folder.\n";
 system('rm -rf ' . $tmp);
-mkdir($tmp);
-mkdir($fullpath);
+system('mkdir ' . $tmp);
+system('mkdir ' . $fullpath);
 
 echo "Copy the files from the git repository.\n";
 chdir($repo);
@@ -111,6 +111,7 @@ $doNotPackage = array(
 	'build.xml',
 	'composer.json',
 	'composer.lock',
+	'docs',
 	'karma.conf.js',
 	'phpunit.xml.dist',
 	'tests',
@@ -127,17 +128,59 @@ $doNotPackage = array(
  */
 $doNotPatch = array(
 	'administrator/logs',
+	'docs',
 	'installation',
 	'images',
+	'logs',
 );
 
 // For the packages, replace spaces in stability (RC) with underscores
 $packageStability = str_replace(' ', '_', $stability);
 
+// Prepare list of deleted files *ever*
+echo "Prepare list of deleted files since 3.0.0 and store in com_admin for the update script to use.\n{$command}\n";
+
+$command = $systemGit . ' diff tags/3.0.0 tags/' . $fullVersion . ' --name-only --diff-filter=D > ' . $here . '/deleted_files/3.0.0-plus.lst';
+
+system($command);
+
+$file25 = (array) file($here . '/deleted_files/2.5.0.lst');
+$file30 = (array) file($here . '/deleted_files/3.0.0.lst');
+$fileXX = (array) file($here . '/deleted_files/3.0.0-plus.lst');
+
+$allRemovedFiles  = array_merge($file25, $file30, $fileXX);
+$deletedRepoFiles = array();
+
+foreach ($allRemovedFiles as &$removedFile)
+{
+	$fileName = rtrim($removedFile);
+	list($baseFolderName) = explode('/', $fileName, 2);
+
+	$doNotPackageFile       = in_array($fileName, $doNotPackage);
+	$doNotPatchFile         = in_array($fileName, $doNotPatch);
+	$doNotPackageBaseFolder = in_array($baseFolderName, $doNotPackage);
+	$doNotPatchBaseFolder   = in_array($baseFolderName, $doNotPatch);
+	$isFile                 = is_file($fullpath . '/' . $fileName);
+
+	if (!$isFile && !$doNotPackageFile && !$doNotPatchFile && !$doNotPackageBaseFolder && !$doNotPatchBaseFolder)
+	{
+		$deletedRepoFiles[] = $removedFile;
+	}
+}
+
+$comAdmin = $fullpath . '/administrator/components/com_admin/files';
+
+if (!is_dir($comAdmin))
+{
+	mkdir($comAdmin, 0777, true);
+}
+
+file_put_contents($comAdmin . '/delete.lst', implode($deletedRepoFiles));
+
 // Count down starting with the latest release and add diff files to this array
 for ($num = $release - 1; $num >= 0; $num--)
 {
-	echo "Create version $num update packages.\n";
+	echo "Create version $version.$num update packages.\n";
 
 	// Here we get a list of all files that have changed between the two tags ($previousTag and $fullVersion) and save in diffdocs
 	$previousTag = $version . '.' . $num;
@@ -152,9 +195,8 @@ for ($num = $release - 1; $num >= 0; $num--)
 	// Loop through and add all files except: tests, installation, build, .git, .travis, travis, phpunit, .md, or images
 	foreach ($files as $file)
 	{
-		$fileName   = substr($file, 2);
-		$folderPath = explode('/', $fileName);
-		$baseFolderName = $folderPath[0];
+		$fileName = substr($file, 2);
+		list($baseFolderName) = explode('/', $fileName, 2);
 
 		$doNotPackageFile = in_array(trim($fileName), $doNotPackage);
 		$doNotPatchFile = in_array(trim($fileName), $doNotPatch);

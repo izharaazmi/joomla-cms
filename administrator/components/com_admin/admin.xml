@@ -12,11 +12,16 @@
 	<media />
 	<administration>
 		<files folder="admin">
-			<filename>admin.php</filename>
-			<filename>controller.php</filename>
+			<folder>controllers</folder>
+			<folder>files</folder>
 			<folder>helpers</folder>
 			<folder>models</folder>
+			<folder>postinstall</folder>
+			<folder>sql</folder>
 			<folder>views</folder>
+			<filename>admin.php</filename>
+			<filename>controller.php</filename>
+			<filename>script.php</filename>
 		</files>
 		<languages folder="admin">
 			<language tag="en-GB">language/en-GB.com_admin.ini</language>
