@@ -662,10 +662,10 @@ class JoomlaInstallerScript
 			 * If we remove any file from repository that should still not be removed in the users Joomla installation we'd need to add it here.
 			 */
 			$doNotDelete = array(
+				'administrator/logs/index.html',
 				'configuration.php',
 				'CONTRIBUTING.md',
 				'logs/index.html',
-				'administrator/logs/index.html',
 				'robots.txt',
 			);
 
@@ -702,8 +702,8 @@ class JoomlaInstallerScript
 			 * If we remove any file from repository that should still not be removed in the users Joomla installation we'd need to add it here.
 			 */
 			$doNotDelete = array(
-				'logs',
 				'administrator/logs',
+				'logs',
 			);
 
 			foreach ($paths as $path)

@@ -14,6 +14,7 @@
  * 1. Tag new release in the local git repository (for example, "git tag 2.5.1")
  * 2. Set the $version and $release variables for the new version.
  * 3. Run from CLI as: 'php build.php" from build directory.
+ *    Ignore any warning about inexact rename detection from Git commands.
  * 4. Check the archives in the tmp directory.
  *
  * @package    Joomla.Build
@@ -38,6 +39,8 @@ $version     = JVersion::RELEASE;
 $release     = JVersion::DEV_LEVEL;
 $stability   = JVersion::DEV_STATUS;
 $fullVersion = $version . '.' . $release;
+
+list($major, $minor) = explode('.', $version);
 
 // Shortcut the paths to the repository root and build folder
 $here = __DIR__;
@@ -138,35 +141,118 @@ $doNotPatch = array(
 $packageStability = str_replace(' ', '_', $stability);
 
 // Prepare list of deleted files *ever*
-echo "Prepare list of deleted files since 3.0.0 and store in com_admin for the update script to use.\n{$command}\n";
+echo "Prepare list of deleted files since 3.0.0 stepwise for each release and store in com_admin for the update script to use.\n";
 
-$command = $systemGit . ' diff tags/3.0.0 tags/' . $fullVersion . ' --name-only --diff-filter=D > ' . $here . '/deleted_files/3.0.0-plus.lst';
+// Following previous tags logic supports built for 3.x.x onwards only
+system($systemGit . ' tag > tags_list');
+$tags = file('tags_list');
+@unlink('tags_list');
 
-system($command);
+if ($tags)
+{
+	if (intval($release) > 0)
+	{
+		// This is a revision release (X.X.X)
+		$prev    = $release - 1;
+		$pattern = "/^([3-$major]\.[0-$minor]+\.[0-$prev]+)$/";
+	}
+	elseif ($minor > 0)
+	{
+		// This is a minor release (X.X.0). First in a minor release, find the last stable in previous minor series.
+		$prev    = $minor - 1;
+		$pattern = "/^([3-$major]\.[0-$prev]\.\d+)$/";
+	}
+	else
+	{
+		// This is a major release (X.0.0). First in a minor release, find the last stable in previous major series.
+		$prev    = $major - 1;
+		$pattern = "/^([3-$prev]\.\d+\.\d+).*$/";
+	}
+
+	$tags  = array_map('trim', $tags);
+	$mTags = preg_filter($pattern, '$1', $tags);
+	$mTags = array_filter($mTags);
+
+	usort($mTags, 'version_compare');
+}
+else
+{
+	// Fallback to the base release 3.0.0 gives us approximately close result.
+	$mTags[] = '3.0.0';
+}
+
+echo 'Previous releases were: ' . implode(($mTags), ", ") . "\n";
 
 $file25 = (array) file($here . '/deleted_files/2.5.0.lst');
 $file30 = (array) file($here . '/deleted_files/3.0.0.lst');
-$fileXX = (array) file($here . '/deleted_files/3.0.0-plus.lst');
 
-$allRemovedFiles  = array_merge($file25, $file30, $fileXX);
-$deletedRepoFiles = array();
+$deletedRepoFiles = array_merge($file25, $file30);
+$sCount           = count($deletedRepoFiles);
 
-foreach ($allRemovedFiles as &$removedFile)
+foreach ($mTags as $index => $cTag)
+{
+	$nTag     = isset($mTags[$index + 1]) ? $mTags[$index + 1] : $fullVersion;
+	$listFile = $here . '/deleted_files/' . $nTag . '.lst';
+
+	if (!is_file($listFile))
+	{
+		echo "Create deleted files list for $cTag - $nTag\n";
+
+		system($systemGit . ' diff tags/' . $cTag . ' tags/' . $nTag . ' --name-status --diff-filter=DR >> ' . $tmp . '/' .$nTag . '-deleted.lst');
+
+		$file3x = (array) file($tmp . '/' .$nTag . '-deleted.lst');
+
+		foreach ($file3x as &$delFile)
+		{
+			// Explode the file on the tab character: [R, old filename, new filename] or [D, deleted filename]
+			list(, $delFile) = explode("\t", $delFile);
+
+			$delFile = rtrim($delFile) ."\n";
+		}
+
+		// Create persistent log for stable releases only
+		if ($nTag != $fullVersion || strtolower($stability) == 'stable')
+		{
+			file_put_contents($listFile, implode($file3x));
+		}
+	}
+	else
+	{
+		$file3x = (array) file($listFile);
+	}
+
+	$deletedRepoFiles = array_merge($deletedRepoFiles, $file3x);
+}
+
+$deletedPackageFiles = array();
+
+foreach ($deletedRepoFiles as $ri => &$removedFile)
 {
 	$fileName = rtrim($removedFile);
 	list($baseFolderName) = explode('/', $fileName, 2);
+
+	// Should we skip deleting index.html files?
+	$isIndex = $ri > $sCount && basename($fileName) == 'index.html';
+
+	/*
+	 * Keep any file that was delete anytime earlier but still exists in the recent release.
+	 * This may happen if it was added back or new files added with same name.
+	 */
+	$stillExists = is_file($fullpath . '/' . $fileName);
 
 	$doNotPackageFile       = in_array($fileName, $doNotPackage);
 	$doNotPatchFile         = in_array($fileName, $doNotPatch);
 	$doNotPackageBaseFolder = in_array($baseFolderName, $doNotPackage);
 	$doNotPatchBaseFolder   = in_array($baseFolderName, $doNotPatch);
-	$isFile                 = is_file($fullpath . '/' . $fileName);
 
-	if (!$isFile && !$doNotPackageFile && !$doNotPatchFile && !$doNotPackageBaseFolder && !$doNotPatchBaseFolder)
+	if (!$isIndex && !$stillExists && !$doNotPackageFile && !$doNotPatchFile && !$doNotPackageBaseFolder && !$doNotPatchBaseFolder)
 	{
-		$deletedRepoFiles[] = $removedFile;
+		$deletedPackageFiles[$fileName . "\n"] = true;
 	}
 }
+
+$deletedPackageFiles = array_keys($deletedPackageFiles);
+sort($deletedPackageFiles);
 
 $comAdmin = $fullpath . '/administrator/components/com_admin/files';
 
@@ -175,7 +261,7 @@ if (!is_dir($comAdmin))
 	mkdir($comAdmin, 0777, true);
 }
 
-file_put_contents($comAdmin . '/delete.lst', implode($deletedRepoFiles));
+file_put_contents($comAdmin . '/delete.lst', implode($deletedPackageFiles));
 
 // Count down starting with the latest release and add diff files to this array
 for ($num = $release - 1; $num >= 0; $num--)
