@@ -171,6 +171,22 @@ abstract class ModMenuHelper
 	 *
 	 * @return  array
 	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	public static function getMenuPreset($menutype)
+	{
+		JLoader::register('MenusHelper', JPATH_ADMINISTRATOR . '/components/com_menus/helpers/menus.php');
+
+		return $items = MenusHelper::loadMenuFromFile($menutype);
+	}
+
+	/**
+	 * Load the menu items from database for the given menutype
+	 *
+	 * @param   string  $menutype  The selected menu type
+	 *
+	 * @return  array
+	 *
 	 * @since   3.7.0
 	 */
 	public static function getMenuItems($menutype)

@@ -21,121 +21,68 @@ $user     = JFactory::getUser();
 $lang     = JFactory::getLanguage();
 
 $rootClass = $recovery ? 'class:' : null;
+
 /**
  * Site Submenu
  */
 $this->addChild(new JMenuNode(JText::_('MOD_MENU_SYSTEM'), '#', $rootClass), true);
+
 $this->addChild(new JMenuNode(JText::_('MOD_MENU_CONTROL_PANEL'), 'index.php', 'class:cpanel'));
 
-if ($user->authorise('core.admin'))
-{
-	$this->addSeparator();
-	$this->addChild(new JMenuNode(JText::_('MOD_MENU_CONFIGURATION'), 'index.php?option=com_config', 'class:config'));
-}
+$this->addSeparator();
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_CONFIGURATION'), 'index.php?option=com_config', 'class:config'));
 
-if ($user->authorise('core.manage', 'com_checkin'))
-{
-	$this->addSeparator();
-	$this->addChild(new JMenuNode(JText::_('MOD_MENU_GLOBAL_CHECKIN'), 'index.php?option=com_checkin', 'class:checkin'));
-}
+$this->addSeparator();
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_GLOBAL_CHECKIN'), 'index.php?option=com_checkin', 'class:checkin'));
 
-if ($user->authorise('core.manage', 'com_cache'))
-{
-	$this->addChild(new JMenuNode(JText::_('MOD_MENU_CLEAR_CACHE'), 'index.php?option=com_cache', 'class:clear'));
-	$this->addChild(new JMenuNode(JText::_('MOD_MENU_PURGE_EXPIRED_CACHE'), 'index.php?option=com_cache&view=purge', 'class:purge'));
-}
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_CLEAR_CACHE'), 'index.php?option=com_cache', 'class:clear'));
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_PURGE_EXPIRED_CACHE'), 'index.php?option=com_cache&view=purge', 'class:purge'));
 
-if ($user->authorise('core.admin'))
-{
-	$this->addSeparator();
-	$this->addChild(new JMenuNode(JText::_('MOD_MENU_SYSTEM_INFORMATION'), 'index.php?option=com_admin&view=sysinfo', 'class:info'));
-}
+$this->addSeparator();
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_SYSTEM_INFORMATION'), 'index.php?option=com_admin&view=sysinfo', 'class:info'));
 
 $this->getParent();
 
 /**
  * Users Submenu
  */
-if ($user->authorise('core.manage', 'com_users'))
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_USERS'), '#', $rootClass), true);
+
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_USER_MANAGER'), 'index.php?option=com_users&view=users', 'class:user'), true);
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_ADD_USER'), 'index.php?option=com_users&task=user.add', 'class:newarticle'));
+$this->getParent();
+
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_GROUPS'), 'index.php?option=com_users&view=groups', 'class:groups'), true);
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_ADD_GROUP'), 'index.php?option=com_users&task=group.add', 'class:newarticle'));
+$this->getParent();
+
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_LEVELS'), 'index.php?option=com_users&view=levels', 'class:levels'), true);
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_ADD_LEVEL'), 'index.php?option=com_users&task=level.add', 'class:newarticle'));
+$this->getParent();
+
+$this->addSeparator();
+
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_NOTES'), 'index.php?option=com_users&view=notes', 'class:user-note'), true);
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_ADD_NOTE'), 'index.php?option=com_users&task=note.add', 'class:newarticle'));
+$this->getParent();
+
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_NOTE_CATEGORIES'), 'index.php?option=com_categories&view=categories&extension=com_users', 'class:category'),true);
+$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_CONTENT_NEW_CATEGORY'), 'index.php?option=com_categories&task=category.add&extension=com_users', 'class:newarticle'));
+$this->getParent();
+
+if (JComponentHelper::isEnabled('com_fields') && JComponentHelper::getParams('com_users')->get('custom_fields_enable', '1'))
 {
-	$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_USERS'), '#', $rootClass), true);
-	$createUser = $shownew && $user->authorise('core.create', 'com_users');
-	$createGrp  = $user->authorise('core.admin', 'com_users');
-
-	$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_USER_MANAGER'), 'index.php?option=com_users&view=users', 'class:user'), $createUser);
-
-	if ($createUser)
-	{
-		$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_ADD_USER'), 'index.php?option=com_users&task=user.add', 'class:newarticle'));
-		$this->getParent();
-	}
-
-	if ($createGrp)
-	{
-		$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_GROUPS'), 'index.php?option=com_users&view=groups', 'class:groups'), $createUser);
-
-		if ($createUser)
-		{
-			$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_ADD_GROUP'), 'index.php?option=com_users&task=group.add', 'class:newarticle'));
-			$this->getParent();
-		}
-
-		$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_LEVELS'), 'index.php?option=com_users&view=levels', 'class:levels'), $createUser);
-
-		if ($createUser)
-		{
-			$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_ADD_LEVEL'), 'index.php?option=com_users&task=level.add', 'class:newarticle'));
-			$this->getParent();
-		}
-	}
-
-	$this->addSeparator();
-	$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_NOTES'), 'index.php?option=com_users&view=notes', 'class:user-note'), $createUser);
-
-	if ($createUser)
-	{
-		$this->addChild(new JMenuNode(JText::_('MOD_MENU_COM_USERS_ADD_NOTE'), 'index.php?option=com_users&task=note.add', 'class:newarticle'));
-		$this->getParent();
-	}
-
-	$this->addChild(
-		new JMenuNode(
-			JText::_('MOD_MENU_COM_USERS_NOTE_CATEGORIES'), 'index.php?option=com_categories&view=categories&extension=com_users', 'class:category'),
-		$createUser
-	);
-
-	if ($createUser)
-	{
-		$this->addChild(
-			new JMenuNode(
-				JText::_('MOD_MENU_COM_CONTENT_NEW_CATEGORY'), 'index.php?option=com_categories&task=category.add&extension=com_users',
-				'class:newarticle'
-			)
-		);
-		$this->getParent();
-	}
-
-	if (JComponentHelper::isEnabled('com_fields') && JComponentHelper::getParams('com_users')->get('custom_fields_enable', '1'))
-	{
-		$this->addChild(
-				new JMenuNode(
-						JText::_('MOD_MENU_FIELDS'), 'index.php?option=com_fields&context=com_users.user', 'class:fields')
-				);
-
-		$this->addChild(
-				new JMenuNode(
-						JText::_('MOD_MENU_FIELDS_GROUP'), 'index.php?option=com_fields&view=groups&context=com_users.user', 'class:category')
-				);
-	}
-
-	if (JFactory::getApplication()->get('massmailoff') != 1)
-	{
-		$this->addSeparator();
-		$this->addChild(new JMenuNode(JText::_('MOD_MENU_MASS_MAIL_USERS'), 'index.php?option=com_users&view=mail', 'class:massmail'));
-	}
-
-	$this->getParent();
+	$this->addChild(new JMenuNode(JText::_('MOD_MENU_FIELDS'), 'index.php?option=com_fields&context=com_users.user', 'class:fields'));
+	$this->addChild(new JMenuNode(JText::_('MOD_MENU_FIELDS_GROUP'), 'index.php?option=com_fields&view=groups&context=com_users.user', 'class:category'));
 }
+
+if (JFactory::getApplication()->get('massmailoff') != 1)
+{
+	$this->addSeparator();
+	$this->addChild(new JMenuNode(JText::_('MOD_MENU_MASS_MAIL_USERS'), 'index.php?option=com_users&view=mail', 'class:massmail'));
+}
+
+$this->getParent();
 
 /**
  * Menus Submenu
@@ -166,11 +113,6 @@ if ($user->authorise('core.manage', 'com_menus'))
 
 	foreach ($menuTypes as $mti => $menuType)
 	{
-		if (!$user->authorise('core.manage', 'com_menus.menu.' . (int) $menuType->id))
-		{
-			continue;
-		}
-
 		$alt = '*' . $menuType->sef . '*';
 
 		if ($menuType->home == 0)

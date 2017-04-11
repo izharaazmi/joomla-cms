@@ -350,10 +350,12 @@ class JAdminCssMenu
 
 		if ($menutype == '*')
 		{
-			require __DIR__ . '/preset/' . ($enabled ? 'enabled.php' : 'disabled.php');
+			$menutype = $params->get('preset');
+			$items    = ModMenuHelper::getMenuPreset($menutype);
 		}
 		else
 		{
+			// Menu items for dynamic db driven setup to load here
 			$items = ModMenuHelper::getMenuItems($menutype);
 			$types = ArrayHelper::getColumn($items, 'type');
 			$app   = JFactory::getApplication();
@@ -424,13 +426,11 @@ class JAdminCssMenu
 					}
 				}
 			}
-
-			// Create levels
-			$items = ModMenuHelper::parseItems($items);
-
-			// Menu items for dynamic db driven setup to load here
-			$this->loadItems($items, $enabled);
 		}
+
+		// Create levels
+		$items = ModMenuHelper::parseItems($items);
+		$this->loadItems($items, $enabled);
 	}
 
 	/**

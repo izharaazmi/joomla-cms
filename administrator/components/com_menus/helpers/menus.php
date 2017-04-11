@@ -7,6 +7,8 @@
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
+use Joomla\Registry\Registry;
+
 defined('_JEXEC') or die;
 
 /**
@@ -20,6 +22,15 @@ class MenusHelper
 	 * Defines the valid request variables for the reverse lookup.
 	 */
 	protected static $_filter = array('option', 'view', 'layout');
+
+	/**
+	 * List of preset include paths
+	 *
+	 * @var  array
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	protected static $presetPaths = array();
 
 	/**
 	 * Configure the Linkbar.
@@ -320,5 +331,176 @@ class MenusHelper
 		}
 
 		return $associations;
+	}
+
+	/**
+	 * Load an administrator menu preset from an XML file
+	 *
+	 * @param   string  $name  Name of the preset to load
+	 *
+	 * @return  stdClass[]
+	 *
+	 * @since  __DEPLOY_VERSION__
+	 */
+	public static function loadMenuFromFile($name)
+	{
+		$presets = static::getPresets();
+
+		if (array_key_exists($name, $presets))
+		{
+			$path = JPath::find(static::$presetPaths, $name . '.xml');
+
+			if ($path && ($xml = simplexml_load_file($path)) && $xml instanceof SimpleXMLElement)
+			{
+				$items = array();
+				$menus = $xml->xpath('/menu/menuitem');
+
+				static::loadMenuLevel($menus, $items);
+
+				return $items;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Load a menu tree from an XML file
+	 *
+	 * @param   SimpleXMLElement[]  $nodes     Name of the xml file to load
+	 * @param   array               $items     Whether the menu will be in enabled state
+	 * @param   int                 $parentId  The record id placeholder for the levels to work
+	 *
+	 * @return  void
+	 *
+	 * @since  __DEPLOY_VERSION__
+	 */
+	protected static function loadMenuLevel($nodes, &$items, $parentId = 1)
+	{
+		static $id = 2;
+
+		foreach ($nodes as $node)
+		{
+			$select = (string) $node['sql_select'];
+			$from   = (string) $node['sql_from'];
+
+			if ($select && $from)
+			{
+				// This is a dynamic iterator group
+				$hidden = (int) $node['hidden'];
+				$where  = (string) $node['sql_where'];
+				$order  = (string) $node['sql_order'];
+
+				$db    = JFactory::getDbo();
+				$query = $db->getQuery(true);
+				$query->select($select)->from($from);
+
+				if ($where)
+				{
+					$query->where($where);
+				}
+
+				if ($order)
+				{
+					$query->order($order);
+				}
+
+				$results = $db->setQuery($query)->loadObjectList();
+
+				if ($results)
+				{
+					// Show the iterator group node only if not hidden and contains something to iterate over
+					if (!$hidden)
+					{
+						$item             = new stdClass;
+						$item->id         = $id++;
+						$item->parent_id  = $parentId;
+						$item->type       = (string) $node['type'];
+						$item->title      = (string) $node['title'];
+						$item->element    = (string) $node['element'];
+						$item->link       = (string) $node['link'];
+						$item->browserNav = (string) $node['target'];
+						$item->access     = (int) $node['access'];
+						$item->params     = new Registry;
+
+						$items[$item->id] = $item;
+					}
+
+					// Iterate over the matching records
+					foreach ($results as $result)
+					{
+						$cId = $id;
+						static::loadMenuLevel($node->xpath('menuitem'), $items, $parentId);
+						$nId = $id;
+
+						// Translate attributes for $index between $cId <= $index < $nId
+						for ($index = $cId; $index < $nId; $index++)
+						{
+							$item = &$items[$index];
+
+							foreach (get_object_vars($result) as $var => $val)
+							{
+								$item->title   = str_replace("{sql:$var}", $val, $item->title);
+								$item->element = str_replace("{sql:$var}", $val, $item->element);
+								$item->link    = str_replace("{sql:$var}", $val, $item->link);
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				// Add each note as a record
+				$options = array();
+
+				if ($params = $node->xpath('params'))
+				{
+					foreach ($params[0]->children() as $element => $value)
+					{
+						$options[(string) $element] = (string) $value;
+					}
+				}
+
+				$item             = new stdClass;
+				$item->id         = $id++;
+				$item->parent_id  = $parentId;
+				$item->type       = (string) $node['type'];
+				$item->title      = (string) $node['title'];
+				$item->element    = (string) $node['element'];
+				$item->link       = (string) $node['link'];
+				$item->browserNav = (string) $node['target'];
+				$item->access     = (int) $node['access'];
+				$item->params     = new Registry($options);
+
+				$items[$item->id] = $item;
+
+				// Process the child nodes
+				$children = $node->xpath('menuitem');
+
+				static::loadMenuLevel($children, $items, $item->id);
+			}
+		}
+	}
+
+	/**
+	 * Get a list of available menu presets
+	 *
+	 * @return  array
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	public static function getPresets()
+	{
+		static::$presetPaths[] = JPATH_ADMINISTRATOR . '/components/com_menus/presets';
+
+		$presets           = array();
+		$presets['joomla'] = JText::_('COM_MENUS_PRESET_JOOMLA');
+		$presets['modern'] = JText::_('COM_MENUS_PRESET_MODERN');
+
+		// Allow plugins to add more presets
+		$dispatcher = JEventDispatcher::getInstance();
+		$dispatcher->trigger('onLoadMenuPresets', array('com_menus.presets', &$presets, &static::$presetPaths));
+
+		return $presets;
 	}
 }
