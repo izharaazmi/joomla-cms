@@ -8,6 +8,7 @@
  */
 
 use Joomla\Registry\Registry;
+use Joomla\Utilities\ArrayHelper;
 
 defined('_JEXEC') or die;
 
@@ -20,6 +21,8 @@ class MenusHelper
 {
 	/**
 	 * Defines the valid request variables for the reverse lookup.
+	 *
+	 * @since   1.6
 	 */
 	protected static $_filter = array('option', 'view', 'layout');
 
@@ -30,7 +33,7 @@ class MenusHelper
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
-	protected static $presetPaths = array();
+	protected static $presets = null;
 
 	/**
 	 * Configure the Linkbar.
@@ -334,51 +337,157 @@ class MenusHelper
 	}
 
 	/**
-	 * Load an administrator menu preset from an XML file
+	 * Add a custom preset externally via plugin or any other means.
+	 * WARNING: Presets with same name will replace previously added preset *except* Joomla's default preset (joomla)
 	 *
-	 * @param   string  $name  Name of the preset to load
+	 * @param   string  $name     The unique identifier for the preset.
+	 * @param   string  $title    The display label for the preset.
+	 * @param   string  $path     The path to the preset file.
+	 * @param   bool    $replace  Whether to replace the preset with the same name if any (except 'joomla').
+	 *
+	 * @return  void
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	public static function addPreset($name, $title, $path, $replace = true)
+	{
+		if (static::$presets === null)
+		{
+			static::getPresets();
+		}
+
+		if ($name == 'joomla')
+		{
+			$replace = false;
+		}
+
+		if (($replace || !array_key_exists($name, static::$presets)) && is_file($path))
+		{
+			$preset = new stdClass;
+
+			$preset->name  = $name;
+			$preset->title = $title;
+			$preset->path  = $path;
+
+			static::$presets[$name] = $preset;
+		}
+	}
+
+	/**
+	 * Get a list of available presets.
 	 *
 	 * @return  stdClass[]
 	 *
-	 * @since  __DEPLOY_VERSION__
+	 * @since   __DEPLOY_VERSION__
 	 */
-	public static function loadMenuFromFile($name)
+	public static function getPresets()
 	{
-		$presets = static::getPresets();
-
-		if (array_key_exists($name, $presets))
+		if (static::$presets === null)
 		{
-			$path = JPath::find(static::$presetPaths, $name . '.xml');
+			static::$presets = array();
 
-			if ($path && ($xml = simplexml_load_file($path)) && $xml instanceof SimpleXMLElement)
+			static::addPreset('joomla', 'COM_MENUS_PRESET_JOOMLA', dirname(__DIR__) . '/presets/joomla.xml');
+			static::addPreset('modern', 'COM_MENUS_PRESET_MODERN', dirname(__DIR__) . '/presets/modern.php');
+
+			// Load from template folder automatically
+			$app = JFactory::getApplication();
+			$tpl = JPATH_THEMES . '/' . $app->getTemplate() . '/html/com_menus/presets';
+
+			if (is_dir($tpl))
 			{
-				$items = array();
-				$menus = $xml->xpath('/menu/menuitem');
+				jimport('joomla.filesystem.folder');
 
-				static::loadMenuLevel($menus, $items);
+				$files = JFolder::files($tpl, '\.(xml|php)$');
 
-				return $items;
+				foreach ($files as $file)
+				{
+					$name  = substr($file, 0, -4);
+					$title = str_replace('-', ' ', $name);
+
+					static::addPreset(strtolower($name), ucwords($title), $tpl . '/' . $file);
+				}
 			}
 		}
 
-		return null;
+		return static::$presets;
+	}
+
+	/**
+	 * Load the menu items from database for the given menutype
+	 *
+	 * @param   string   $menutype     The selected menu type
+	 * @param   boolean  $enabledOnly  Whether to load only enabled/published menu items.
+	 * @param   int[]    $exclude      The menu items to exclude from the list
+	 *
+	 * @return  array
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	public static function getMenuItems($menutype, $enabledOnly = false, $exclude = array())
+	{
+		$db    = JFactory::getDbo();
+		$query = $db->getQuery(true);
+
+		// Prepare the query.
+		$query->select('m.*')
+			->from('#__menu AS m')
+			->where('m.menutype = ' . $db->q($menutype))
+			->where('m.client_id = 1')
+			->where('m.id > 1');
+
+		if ($enabledOnly)
+		{
+			$query->where('m.published = 1');
+		}
+
+		if (count($exclude))
+		{
+			$query->where('m.id NOT IN (' . implode(', ', array_map('intval', $exclude)) . ')');
+			$query->where('m.parent_id NOT IN (' . implode(', ', array_map('intval', $exclude)) . ')');
+		}
+
+		// Filter on the enabled states.
+		$query->select('e.element')
+			->join('LEFT', '#__extensions AS e ON m.component_id = e.extension_id')
+			->where('(e.enabled = 1 OR e.enabled IS NULL)');
+
+		// Order by lft.
+		$query->order('m.lft');
+
+		$db->setQuery($query);
+
+		try
+		{
+			$menuItems = $db->loadObjectList();
+
+			foreach ($menuItems as &$menuitem)
+			{
+				$menuitem->params = new Registry($menuitem->params);
+			}
+		}
+		catch (RuntimeException $e)
+		{
+			$menuItems = array();
+
+			JFactory::getApplication()->enqueueMessage(JText::_('JERROR_AN_ERROR_HAS_OCCURRED'), 'error');
+		}
+
+		return $menuItems;
 	}
 
 	/**
 	 * Load a menu tree from an XML file
 	 *
-	 * @param   SimpleXMLElement[]  $nodes     Name of the xml file to load
-	 * @param   array               $items     Whether the menu will be in enabled state
-	 * @param   int                 $parentId  The record id placeholder for the levels to work
+	 * @param   SimpleXMLElement[]  $nodes    Name of the xml file to load
+	 * @param   stdClass[]          $items    The menu hierarchy list to be populated
+	 * @param   array               $replace  The substring replacements for iterator type items
 	 *
 	 * @return  void
 	 *
 	 * @since  __DEPLOY_VERSION__
 	 */
-	protected static function loadMenuLevel($nodes, &$items, $parentId = 1)
+	public static function loadXml($nodes, &$items, $replace = array())
 	{
-		static $id = 2;
-
 		foreach ($nodes as $node)
 		{
 			$select = (string) $node['sql_select'];
@@ -409,98 +518,317 @@ class MenusHelper
 
 				if ($results)
 				{
-					// Show the iterator group node only if not hidden and contains something to iterate over
+					// Show the iterator 'group' node only if not hidden and contains something to iterate over
 					if (!$hidden)
 					{
-						$item             = new stdClass;
-						$item->id         = $id++;
-						$item->parent_id  = $parentId;
+						$item = new stdClass;
+
 						$item->type       = (string) $node['type'];
-						$item->title      = (string) $node['title'];
-						$item->element    = (string) $node['element'];
+						$item->text       = (string) $node['title'];
 						$item->link       = (string) $node['link'];
+						$item->element    = (string) $node['element'];
+						$item->class      = (string) $node['class'];
 						$item->browserNav = (string) $node['target'];
 						$item->access     = (int) $node['access'];
-						$item->params     = new Registry;
+						$item->access     = (int) $node['access'];
+						$item->params     = new Registry(trim($node->params));
+						$item->submenu    = array();
 
-						$items[$item->id] = $item;
+						// Translate attributes for iterator values
+						foreach ($replace as $var => $val)
+						{
+							$item->text    = str_replace("{sql:$var}", $val, $item->text);
+							$item->element = str_replace("{sql:$var}", $val, $item->element);
+							$item->link    = str_replace("{sql:$var}", $val, $item->link);
+						}
+
+						$items[] = $item;
 					}
 
 					// Iterate over the matching records
 					foreach ($results as $result)
 					{
-						$cId = $id;
-						static::loadMenuLevel($node->xpath('menuitem'), $items, $parentId);
-						$nId = $id;
-
-						// Translate attributes for $index between $cId <= $index < $nId
-						for ($index = $cId; $index < $nId; $index++)
-						{
-							$item = &$items[$index];
-
-							foreach (get_object_vars($result) as $var => $val)
-							{
-								$item->title   = str_replace("{sql:$var}", $val, $item->title);
-								$item->element = str_replace("{sql:$var}", $val, $item->element);
-								$item->link    = str_replace("{sql:$var}", $val, $item->link);
-							}
-						}
+						static::loadXml($node->xpath('menuitem'), $items, $result);
 					}
 				}
 			}
 			else
 			{
-				// Add each note as a record
-				$options = array();
+				// Add each node as a record
+				$item = new stdClass;
 
-				if ($params = $node->xpath('params'))
-				{
-					foreach ($params[0]->children() as $element => $value)
-					{
-						$options[(string) $element] = (string) $value;
-					}
-				}
-
-				$item             = new stdClass;
-				$item->id         = $id++;
-				$item->parent_id  = $parentId;
 				$item->type       = (string) $node['type'];
-				$item->title      = (string) $node['title'];
-				$item->element    = (string) $node['element'];
+				$item->text       = (string) $node['title'];
 				$item->link       = (string) $node['link'];
+				$item->element    = (string) $node['element'];
+				$item->class      = (string) $node['class'];
 				$item->browserNav = (string) $node['target'];
 				$item->access     = (int) $node['access'];
-				$item->params     = new Registry($options);
+				$item->access     = (int) $node['access'];
+				$item->params     = new Registry(trim($node->params));
+				$item->submenu    = array();
 
-				$items[$item->id] = $item;
+				// Translate attributes for iterator values
+				foreach ($replace as $var => $val)
+				{
+					$item->text    = str_replace("{sql:$var}", $val, $item->text);
+					$item->element = str_replace("{sql:$var}", $val, $item->element);
+					$item->link    = str_replace("{sql:$var}", $val, $item->link);
+				}
 
 				// Process the child nodes
-				$children = $node->xpath('menuitem');
+				static::loadXml($node->xpath('menuitem'), $item->submenu, $replace);
+				static::cleanup($item->submenu);
 
-				static::loadMenuLevel($children, $items, $item->id);
+				$items[] = $item;
 			}
 		}
 	}
 
 	/**
-	 * Get a list of available menu presets
+	 * Parse the list of extensions.
+	 *
+	 * @param   array  $menuItems  List of loaded components
+	 * @param   bool   $authCheck  An optional switch to turn off the auth check (to support custom layouts 'grey out' behaviour).
 	 *
 	 * @return  array
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
-	public static function getPresets()
+	public static function createLevels($menuItems, $authCheck = true)
 	{
-		static::$presetPaths[] = JPATH_ADMINISTRATOR . '/components/com_menus/presets';
+		$result = array();
+		$user   = JFactory::getUser();
+		$lang   = JFactory::getLanguage();
+		$levels = $user->getAuthorisedViewLevels();
 
-		$presets           = array();
-		$presets['joomla'] = JText::_('COM_MENUS_PRESET_JOOMLA');
-		$presets['modern'] = JText::_('COM_MENUS_PRESET_MODERN');
+		// Process each item
+		foreach ($menuItems as $i => &$menuitem)
+		{
+			/*
+			 * Exclude item with menu item option set to exclude from menu modules
+			 * Exclude item if the component is not authorised
+			 * Exclude item if menu item set access level is not met
+			 */
+			if (($menuitem->params->get('menu_show', 1) == 0)
+				|| ($menuitem->element && $authCheck && !$user->authorise('core.manage', $menuitem->element))
+				|| ($menuitem->access && !in_array($menuitem->access, $levels)))
+			{
+				continue;
+			}
 
-		// Allow plugins to add more presets
-		$dispatcher = JEventDispatcher::getInstance();
-		$dispatcher->trigger('onLoadMenuPresets', array('com_menus.presets', &$presets, &static::$presetPaths));
+			$menuitem->link = trim($menuitem->link);
 
-		return $presets;
+			// Evaluate link url
+			switch ($menuitem->type)
+			{
+				case 'component':
+					$menuitem->link = $menuitem->link ?: 'index.php?option=' . $menuitem->element;
+					break;
+				case 'url':
+					break;
+				case 'separator':
+				case 'heading':
+				case 'container':
+					$menuitem->link = '#';
+					break;
+				case 'alias':
+					$aliasTo        = $menuitem->params->get('aliasoptions');
+					$menuitem->link = static::getLink($aliasTo);
+					break;
+				default:
+			}
+
+			if ($menuitem->link == '')
+			{
+				continue;
+			}
+
+			// Translate Menu item label, if needed
+			if (!empty($menuitem->element))
+			{
+				$lang->load($menuitem->element . '.sys', JPATH_BASE, null, false, true)
+				|| $lang->load($menuitem->element . '.sys', JPATH_ADMINISTRATOR . '/components/' . $menuitem->element, null, false, true);
+			}
+
+			$menuitem->text    = $lang->hasKey($menuitem->title) ? JText::_($menuitem->title) : $menuitem->title;
+			$menuitem->submenu = array();
+
+			$result[$menuitem->parent_id][$menuitem->id] = $menuitem;
+		}
+
+		// Do an early exit if there are no top level menu items.
+		if (!isset($result[1]))
+		{
+			return array();
+		}
+
+		// Put the items under respective parent menu items.
+		foreach ($result as $parentId => &$mItems)
+		{
+			foreach ($mItems as &$mItem)
+			{
+				if (isset($result[$mItem->id]))
+				{
+					static::cleanup($result[$mItem->id]);
+
+					$mItem->submenu = &$result[$mItem->id];
+				}
+			}
+		}
+
+		// Return only top level items, subtree follows
+		return $result[1];
+	}
+
+	/**
+	 * Load the menu items from an array
+	 *
+	 * @param   JMenuTree  $menuTree  Menu Tree object to populate with the given items
+	 * @param   array      $items     Menu items loaded from database
+	 * @param   bool       $enabled   Whether the menu should be enabled or disabled
+	 *
+	 * @return  void
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	public static function loadItems(JMenuTree $menuTree, $items, $enabled = true)
+	{
+		$class = $menuTree->getCurrent()->hasParent() ? 'class:' : null;
+
+		foreach ($items as $item)
+		{
+			if ($item->type == 'separator')
+			{
+				$menuTree->addSeparator($item->text);
+			}
+			elseif ($item->type == 'heading' && !count($item->submenu))
+			{
+				// Exclude if it is a heading type menu item, and has no children.
+			}
+			elseif ($item->type == 'container')
+			{
+				$exclude    = (array) $item->params->get('hideitems') ?: array();
+				$components = MenusHelper::getMenuItems('main', false, $exclude);
+				$components = MenusHelper::createLevels($components, true);
+				$components = ArrayHelper::sortObjects($components, 'text', 1, false, true);
+
+				// Exclude if it is a container type menu item, and has no children.
+				if (count($item->submenu) || count($components))
+				{
+					$menuTree->addChild(new JMenuNode($item->text, $item->link, $class), true);
+
+					if ($enabled)
+					{
+						// Load explicitly assigned child items first.
+						static::loadItems($menuTree, $item->submenu);
+
+						// Add a separator between dynamic menu items and components menu items
+						if (count($item->submenu) && count($components))
+						{
+							$menuTree->addSeparator($item->text);
+						}
+
+						// Adding component submenu the old way, this assumes 2-level menu only
+						foreach ($components as $component)
+						{
+							if (empty($component->submenu))
+							{
+								$menuTree->addChild(new JMenuNode($component->text, $component->link, $component->img));
+							}
+							else
+							{
+								$menuTree->addChild(new JMenuNode($component->text, $component->link, $component->img), true);
+
+								foreach ($component->submenu as $sub)
+								{
+									$menuTree->addChild(new JMenuNode($sub->text, $sub->link, $sub->img));
+								}
+
+								$menuTree->getParent();
+							}
+						}
+					}
+
+					$menuTree->getParent();
+				}
+			}
+			elseif (!$enabled)
+			{
+				$menuTree->addChild(new JMenuNode($item->text, $item->link, 'disabled'));
+			}
+			else
+			{
+				$target = $item->browserNav ? '_blank' : null;
+
+				$menuTree->addChild(new JMenuNode($item->text, $item->link, $class, false, $target), true);
+				static::loadItems($menuTree, $item->submenu);
+				$menuTree->getParent();
+			}
+		}
+	}
+
+	/**
+	 * Method to get a link to the aliased menu item
+	 *
+	 * @param   int  $menuId  The record id of the referencing menu item
+	 *
+	 * @return  string
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	protected static function getLink($menuId)
+	{
+		$table = JTable::getInstance('Menu');
+		$table->load($menuId);
+
+		// Look for an alias-to-alias
+		if ($table->get('type') == 'alias')
+		{
+			$params  = new Registry($table->get('params'));
+			$aliasTo = $params->get('aliasoptions');
+
+			return static::getLink($aliasTo);
+		}
+
+		return $table->get('link');
+	}
+
+	/**
+	 * Method to cleanup the menu items for repeated, leading or trailing separators in a given menu level
+	 *
+	 * @param   array  &$items  The list of menu items in the selected level
+	 *
+	 * @return  void
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	public static function cleanup(&$items)
+	{
+		$b = true;
+
+		foreach ($items as $k => &$item)
+		{
+			if ($item->type == 'separator')
+			{
+				if ($b)
+				{
+					$item = false;
+				}
+
+				$b = true;
+			}
+			else
+			{
+				$b = false;
+			}
+		}
+
+		if ($b)
+		{
+			$item = false;
+		}
+
+		$items = array_filter($items);
 	}
 }
