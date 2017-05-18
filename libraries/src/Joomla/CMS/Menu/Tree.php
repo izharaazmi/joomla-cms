@@ -1,24 +1,27 @@
 <?php
 /**
- * @package     Joomla.Libraries
- * @subpackage  Menu
+ * Joomla! Content Management System
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
- * @license     GNU General Public License version 2 or later; see LICENSE.txt
+ * @copyright  Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @license    GNU General Public License version 2 or later; see LICENSE.txt
  */
+namespace Joomla\CMS\Menu;
+
+use Joomla\CMS\Menu\Node\Separator;
+
 defined('JPATH_PLATFORM') or die;
 
 /**
- * Class JMenuTree to represent a menu tree depending on the menutype provided
+ * Menu Tree class to represent a menu tree hierarchy
  *
  * @since   __DEPLOY_VERSION__
  */
-class JMenuTree
+class Tree
 {
 	/**
 	 * The root menu node
 	 *
-	 * @var  JMenuNode
+	 * @var  Node
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
@@ -27,7 +30,7 @@ class JMenuTree
 	/**
 	 * The current working menu node
 	 *
-	 * @var  JMenuNode
+	 * @var  Node
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
@@ -49,14 +52,14 @@ class JMenuTree
 	 */
 	public function __construct()
 	{
-		$this->root    = new JMenuNode('ROOT');
+		$this->root    = new Node('ROOT');
 		$this->current = $this->root;
 	}
 
 	/**
 	 * Get the root node
 	 *
-	 * @return  JMenuNode
+	 * @return  Node
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
@@ -68,7 +71,7 @@ class JMenuTree
 	/**
 	 * Get the current node
 	 *
-	 * @return  JMenuNode
+	 * @return  Node
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
@@ -80,7 +83,7 @@ class JMenuTree
 	/**
 	 * Get the current node
 	 *
-	 * @param   JMenuNode  $node
+	 * @param   Node  $node
 	 *
 	 * @return  void
 	 *
@@ -99,7 +102,7 @@ class JMenuTree
 	 *
 	 * @param   bool  $setCurrent  Set that parent as the current node for further working
 	 *
-	 * @return  JMenuNode
+	 * @return  Node
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
@@ -120,7 +123,7 @@ class JMenuTree
 	 *
 	 * @param   bool  $clear  Whether to clear the existing menu items or just reset the pointer to root element
 	 *
-	 * @return  JMenuNode  The root node
+	 * @return  Node  The root node
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
@@ -128,7 +131,7 @@ class JMenuTree
 	{
 		if ($clear)
 		{
-			$this->root = new JMenuNode('ROOT');
+			$this->root = new Node('ROOT');
 			$this->css  = array();
 		}
 
@@ -140,14 +143,14 @@ class JMenuTree
 	/**
 	 * Method to add a child
 	 *
-	 * @param   JMenuNode  $node        The node to process
-	 * @param   bool       $setCurrent  Set this new child as the current node for further working
+	 * @param   Node  $node        The node to process
+	 * @param   bool  $setCurrent  Set this new child as the current node for further working
 	 *
-	 * @return  JMenuNode  The newly added node
+	 * @return  Node  The newly added node
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
-	public function addChild(JMenuNode $node, $setCurrent = false)
+	public function addChild(Node $node, $setCurrent = false)
 	{
 		$this->current->addChild($node);
 
@@ -160,56 +163,17 @@ class JMenuTree
 	}
 
 	/**
-	 * Method to add a child by parameters
-	 *
-	 * @param   string  $type     The menu item type
-	 * @param   string  $title    The title of the node
-	 * @param   string  $link     The node link
-	 * @param   string  $element  The element name
-	 * @param   string  $class    The CSS class for the node
-	 * @param   string  $target   The link target
-	 * @param   int     $access   The access level for this link
-	 * @param   array   $params   The additional custom parameters for the node
-	 *
-	 * @return  JMenuNode  The newly added node
-	 *
-	 * @since   __DEPLOY_VERSION__
-	 */
-	public function addItem($type, $title, $link, $element = null, $class = null, $target = null, $access = 0, $params = null)
-	{
-		if ($type == 'separator')
-		{
-			$node = $this->addSeparator($title);
-		}
-		else
-		{
-			$class = $this->current->title == 'ROOT' ? null : $class;
-			$node  = new JMenuNode($title, $link, $class, false, null, $target, null, $params);
-
-			$node->type    = $type;
-			$node->element = $element;
-			$node->access  = $access;
-
-			$this->addChild($node);
-		}
-
-		return $node;
-	}
-
-	/**
 	 * Method to add a separator node
 	 *
 	 * @param   string  $title  The separator label text. A dash "-" can be used to use a horizontal bar instead of text label.
 	 *
-	 * @return  JMenuNode
+	 * @return  Node
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
 	public function addSeparator($title = null)
 	{
-		$title = ($title == '-' || $title == '') ? null : $title;
-
-		return $this->addChild(new JMenuNode($title, null, 'separator', false));
+		return $this->addChild(new Separator($title));
 	}
 
 	/**

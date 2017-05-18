@@ -7,6 +7,9 @@
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
+use Joomla\CMS\Menu\Node\Separator;
+use Joomla\CMS\Menu\Tree;
+use Joomla\CMS\Menu\Node;
 use Joomla\Registry\Registry;
 use Joomla\Utilities\ArrayHelper;
 
@@ -623,8 +626,6 @@ class MenusHelper
 			switch ($menuitem->type)
 			{
 				case 'component':
-					$menuitem->link = $menuitem->link ?: 'index.php?option=' . $menuitem->element;
-					break;
 				case 'url':
 					break;
 				case 'separator':
@@ -684,20 +685,20 @@ class MenusHelper
 	/**
 	 * Load the menu items from an array
 	 *
-	 * @param   JMenuTree  $menuTree  Menu Tree object to populate with the given items
-	 * @param   array      $items     Menu items loaded from database
-	 * @param   bool       $enabled   Whether the menu should be enabled or disabled
+	 * @param   Tree   $menuTree  Menu Tree object to populate with the given items
+	 * @param   array  $items     Menu items loaded from database
+	 * @param   bool   $enabled   Whether the menu should be enabled or disabled
 	 *
 	 * @return  void
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
-	public static function loadItems(JMenuTree $menuTree, $items, $enabled = true)
+	public static function loadItems(Tree $menuTree, $items, $enabled = true)
 	{
-		$class = $menuTree->getCurrent()->hasParent() ? 'class:' : null;
-
 		foreach ($items as $item)
 		{
+			$class = $item->img ?: 'class:';
+
 			if ($item->type == 'separator')
 			{
 				$menuTree->addSeparator($item->text);
@@ -716,7 +717,7 @@ class MenusHelper
 				// Exclude if it is a container type menu item, and has no children.
 				if (count($item->submenu) || count($components))
 				{
-					$menuTree->addChild(new JMenuNode($item->text, $item->link, $class), true);
+					$menuTree->addChild(new Node\Container($item->text, $class), true);
 
 					if ($enabled)
 					{
@@ -734,15 +735,15 @@ class MenusHelper
 						{
 							if (empty($component->submenu))
 							{
-								$menuTree->addChild(new JMenuNode($component->text, $component->link, $component->img));
+								$menuTree->addChild(new Node\Component($component->text, $component->link, $component->element, $component->img));
 							}
 							else
 							{
-								$menuTree->addChild(new JMenuNode($component->text, $component->link, $component->img), true);
+								$menuTree->addChild(new Node($component->text, $component->link, $component->img), true);
 
 								foreach ($component->submenu as $sub)
 								{
-									$menuTree->addChild(new JMenuNode($sub->text, $sub->link, $sub->img));
+									$menuTree->addChild(new Node($sub->text, $sub->link, $sub->img));
 								}
 
 								$menuTree->getParent();
@@ -755,13 +756,13 @@ class MenusHelper
 			}
 			elseif (!$enabled)
 			{
-				$menuTree->addChild(new JMenuNode($item->text, $item->link, 'disabled'));
+				$menuTree->addChild(new Node($item->text, $item->link, 'disabled'));
 			}
 			else
 			{
 				$target = $item->browserNav ? '_blank' : null;
 
-				$menuTree->addChild(new JMenuNode($item->text, $item->link, $class, false, $target), true);
+				$menuTree->addChild(new Node($item->text, $item->link, $class, false, $target), true);
 				static::loadItems($menuTree, $item->submenu);
 				$menuTree->getParent();
 			}

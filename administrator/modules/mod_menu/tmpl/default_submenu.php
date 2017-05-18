@@ -9,9 +9,9 @@
 defined('_JEXEC') or die;
 
 /**
- * ==============================================================================================
- * IMPORTANT: The scope of this layout file is the `JMenuTree` object and NOT the module context.
- * ==============================================================================================
+ * =========================================================================================================
+ * IMPORTANT: The scope of this layout file is the `Joomla\CMS\Menu\Tree` object and NOT the module context.
+ * =========================================================================================================
  */
 $enabled = !JFactory::getApplication()->input->get('hidemainmenu');
 

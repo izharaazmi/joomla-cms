@@ -9,6 +9,8 @@
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Menu\Node;
+use Joomla\CMS\Menu\Tree;
 use Joomla\Registry\Registry;
 use Joomla\Utilities\ArrayHelper;
 
@@ -22,7 +24,7 @@ class JAdminCssMenu
 	/**
 	 * The Menu tree object
 	 *
-	 * @var   JMenuTree
+	 * @var   Tree
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
@@ -31,7 +33,7 @@ class JAdminCssMenu
 	/**
 	 * Get the current menu tree
 	 *
-	 * @return  JMenuTree
+	 * @return  Tree
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
@@ -52,7 +54,7 @@ class JAdminCssMenu
 	 */
 	public function load($params, $enabled)
 	{
-		$this->tree = new JMenuTree;
+		$this->tree = new Tree;
 		$menutype   = $params->get('menutype', '*');
 
 		if ($menutype == '*')
@@ -72,7 +74,7 @@ class JAdminCssMenu
 					$params->set('recovery', true);
 
 					// In recovery mode, load the preset inside a special root node.
-					$this->tree->addChild(new JMenuNode(JText::_('MOD_MENU_RECOVERY_MENU_ROOT'), '#'), true);
+					$this->tree->addChild(new Node(JText::_('MOD_MENU_RECOVERY_MENU_ROOT'), '#'), true);
 
 					$this->loadPreset('joomla', true, $params);
 
@@ -82,7 +84,7 @@ class JAdminCssMenu
 					$uri = clone JUri::getInstance();
 					$uri->setVar('recover_menu', 0);
 
-					$this->tree->addChild(new JMenuNode(JText::_('MOD_MENU_RECOVERY_EXIT'), $uri->toString()));
+					$this->tree->addChild(new Node(JText::_('MOD_MENU_RECOVERY_EXIT'), $uri->toString()));
 
 					$this->tree->getParent();
 				}
@@ -192,6 +194,7 @@ class JAdminCssMenu
 					$xmlNodes = $xml->xpath('/menu/menuitem');
 					$items    = array();
 
+					MenusHelper::loadFromXml($xmlNodes, $this->tree);
 					MenusHelper::loadXml($xmlNodes, $items);
 					MenusHelper::loadItems($this->tree, $items, $enabled);
 				}
