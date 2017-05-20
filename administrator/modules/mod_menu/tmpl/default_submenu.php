@@ -10,40 +10,42 @@ defined('_JEXEC') or die;
 
 /**
  * =========================================================================================================
- * IMPORTANT: The scope of this layout file is the `Joomla\CMS\Menu\Tree` object and NOT the module context.
+ * IMPORTANT: The scope of this layout file is the `JAdminCssMenu` object and NOT the module context.
  * =========================================================================================================
  */
-$enabled = !JFactory::getApplication()->input->get('hidemainmenu');
-
 /** @var  JAdminCssMenu  $this */
 $current = $this->tree->getCurrent();
 
 // Build the CSS class suffix
-$class = '';
-
-if ($enabled && $current->hasChildren())
+if (!$this->enabled)
 {
-	$class = ' class="dropdown"';
+	$class = ' class="disabled"';
 }
-
-if ($current->class == 'separator')
+elseif ($current->type == 'separator')
 {
 	$class = $current->title ? ' class="menuitem-group"' : ' class="divider"';
 }
-
-if ($enabled && $current->hasChildren() && $current->class)
+elseif ($current->hasChildren())
 {
-	$class = ' class="dropdown-submenu"';
-
-	if ($current->class == 'scrollable-menu')
+	if ($current->getParent()->hasParent())
 	{
-		$class = ' class="dropdown scrollable-menu"';
+		if ($current->class == 'scrollable-menu')
+		{
+			$class = ' class="dropdown scrollable-menu"';
+		}
+		else
+		{
+			$class = ' class="dropdown-submenu"';
+		}
+	}
+	else
+	{
+		$class = ' class="dropdown"';
 	}
 }
-
-if ($current->class == 'disabled')
+else
 {
-	$class = ' class="disabled"';
+	$class = '';
 }
 
 // Print the item
@@ -54,7 +56,7 @@ $linkClass     = array();
 $dataToggle    = '';
 $dropdownCaret = '';
 
-if ($enabled && $current->hasChildren())
+if ($current->hasChildren())
 {
 	$linkClass[] = 'dropdown-toggle';
 	$dataToggle  = ' data-toggle="dropdown"';
@@ -69,7 +71,7 @@ else
 	$linkClass[] = 'no-dropdown';
 }
 
-if ($current->link != null && $current->getParent()->title != 'ROOT')
+if ($current->type != 'separator' && $current->getParent()->hasParent())
 {
 	$iconClass = $this->tree->getIconClass();
 
@@ -81,37 +83,26 @@ if ($current->link != null && $current->getParent()->title != 'ROOT')
 
 // Implode out $linkClass for rendering
 $linkClass = ' class="' . implode(' ', $linkClass) . '"';
-$title     = JText::_($current->title);
 
-if ($current->link != null && $current->target != null)
+// Links: component/container/url
+if ($current->link)
 {
-	echo '<a' . $linkClass . ' ' . $dataToggle . ' href="' . $current->link . '" target="' . $current->target . '">'
-		. $title . $dropdownCaret . '</a>';
+	$target = $current->target ? 'target="' . $current->target . '"' : '';
+
+	echo '<a' . $linkClass . ' ' . $dataToggle . ' href="' . $current->link . '" ' . $target . '>' . JText::_($current->title) . $dropdownCaret . '</a>';
 }
-elseif ($current->link != null && $current->target == null)
-{
-	echo '<a' . $linkClass . ' ' . $dataToggle . ' href="' . $current->link . '">' . $title . $dropdownCaret . '</a>';
-}
-elseif ($current->title != null && $current->class != 'separator')
-{
-	echo '<a' . $linkClass . ' ' . $dataToggle . '>' . $title . $dropdownCaret . '</a>';
-}
+// Separator
 else
 {
-	echo '<span>' . $title . '</span>';
+	echo '<span>' . JText::_($current->title) . '</span>';
 }
 
 // Recurse through children if they exist
-if ($enabled && $current->hasChildren())
+if ($this->enabled && $current->hasChildren())
 {
-	if ($current->class)
+	if ($current->getParent()->hasParent())
 	{
-		$id = '';
-
-		if (!empty($current->id))
-		{
-			$id = ' id="menu-' . strtolower($current->id) . '"';
-		}
+		$id = $current->id ? ' id="menu-' . strtolower($current->id) . '"' : '';
 
 		echo '<ul' . $id . ' class="dropdown-menu menu-scrollable">' . "\n";
 	}
@@ -121,7 +112,7 @@ if ($enabled && $current->hasChildren())
 	}
 
 	// WARNING: Do not use direct 'include' or 'require' as it is important to isolate the scope for each call
-	$this->renderSubmenu($depth++, JModuleHelper::getLayoutPath('mod_menu', 'default_submenu'));
+	$this->renderLevel($depth++, __FILE__);
 
 	echo "</ul>\n";
 }

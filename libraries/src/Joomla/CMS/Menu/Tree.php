@@ -7,9 +7,9 @@
  */
 namespace Joomla\CMS\Menu;
 
-use Joomla\CMS\Menu\Node\Separator;
-
 defined('JPATH_PLATFORM') or die;
+
+use Joomla\CMS\Menu\Node\Separator;
 
 /**
  * Menu Tree class to represent a menu tree hierarchy
@@ -180,20 +180,21 @@ class Tree
 	 * Method to get the CSS class name for an icon identifier or create one if
 	 * a custom image path is passed as the identifier
 	 *
-	 * @param   string  $identifier  Icon identification string
-	 *
 	 * @return  string	CSS class name
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
-	public function getIconClass($identifier = null)
+	public function getIconClass()
 	{
 		static $classes = array();
 
-		if ($identifier == null)
+		// Top level is special
+		if (!$this->current->hasParent())
 		{
-			$identifier = $this->current->class;
+			return null;
 		}
+
+		$identifier = $this->current->class;
 
 		if (!isset($classes[$identifier]))
 		{
@@ -208,7 +209,10 @@ class Tree
 				$class = preg_replace('#\.[^.]*$#', '', basename($identifier));
 				$class = preg_replace('#\.\.[^A-Za-z0-9\.\_\- ]#', '', $class);
 
-				$this->css[] = ".menu-$class {background: url($identifier) no-repeat;}";
+				if ($class)
+				{
+					$this->css[] = ".menu-$class {background: url($identifier) no-repeat;}";
+				}
 			}
 
 			$classes[$identifier] = "menu-$class";
@@ -227,5 +231,56 @@ class Tree
 	public function getCss()
 	{
 		return $this->css;
+	}
+
+	/**
+	 * Method to convert the entire tree to an Xml element, from current node
+	 *
+	 * @return  \SimpleXMLElement
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	public function asXml()
+	{
+		$node    = $this->current;
+		$element = new \SimpleXMLElement('<menu></menu>');
+		$nodes   = $node->type != 'root' ? array($node) : $node->getChildren();
+
+		$this->node2Xml($nodes, $element);
+
+		return $element;
+	}
+
+	/**
+	 * Method to convert the given nodes Xml element and add to given element as children
+	 *
+	 * @param   Node[]             $nodes    The nodes to convert
+	 * @param   \SimpleXMLElement  $element
+	 *
+	 * @return  void
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	protected function node2Xml($nodes, $element)
+	{
+		foreach ($nodes as $node)
+		{
+			if ($params = $node->params);
+			{
+				$element->addChild('params', json_encode($params));
+			}
+
+			$attribs = get_object_vars($node);
+			$child   = $element->addChild('menuitem');
+
+			foreach ($attribs as $key => $value)
+			{
+				$child[$key] = $value;
+			}
+
+			$childNodes = $node->getChildren();
+
+			$this->node2Xml($childNodes, $child);
+		}
 	}
 }

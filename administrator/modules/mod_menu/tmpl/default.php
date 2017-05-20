@@ -23,7 +23,7 @@ if ($root->hasChildren())
 	echo '<ul id="menu" class="' . $class . '">' . "\n";
 
 	// WARNING: Do not use direct 'include' or 'require' as it is important to isolate the scope for each call
-	$menu->renderSubmenu($depth++, JModuleHelper::getLayoutPath('mod_menu', 'default_submenu'));
+	$menu->renderLevel($depth++, JModuleHelper::getLayoutPath('mod_menu', 'default_submenu'));
 
 	echo "</ul>\n";
 

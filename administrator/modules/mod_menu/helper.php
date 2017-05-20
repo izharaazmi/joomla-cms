@@ -9,8 +9,6 @@
 
 defined('_JEXEC') or die;
 
-use Joomla\Utilities\ArrayHelper;
-
 /**
  * Helper for mod_menu
  *
@@ -59,39 +57,5 @@ abstract class ModMenuHelper
 		}
 
 		return $result;
-	}
-
-	/**
-	 * Get a list of the authorised, non-special components to display in the components menu.
-	 *
-	 * @param   boolean  $authCheck    An optional switch to turn off the auth check (to support custom layouts 'grey out' behaviour).
-	 * @param   boolean  $enabledOnly  Whether to load only enabled/published menu items.
-	 * @param   int[]    $exclude      The menu items to exclude from the list
-	 *
-	 * @return  array  A nest array of component objects and submenus
-	 *
-	 * @since   1.6
-	 */
-	public static function getComponents($authCheck = true, $enabledOnly = false, $exclude = array())
-	{
-		$components = MenusHelper::getMenuItems('main', $enabledOnly, $exclude);
-		$components = MenusHelper::createLevels($components, $authCheck);
-
-		return ArrayHelper::sortObjects($components, 'text', 1, false, true);
-	}
-
-	/**
-	 * Load the menu items from database for the given menutype
-	 *
-	 * @param   string  $menutype  The selected menu type
-	 *
-	 * @return  array
-	 *
-	 * @since   3.7.0
-	 * @deprecated   Use MenusHelper::getMenuItems()
-	 */
-	public static function getMenuItems($menutype)
-	{
-		return MenusHelper::getMenuItems($menutype, true);
 	}
 }

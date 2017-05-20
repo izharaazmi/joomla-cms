@@ -9,7 +9,7 @@
 
 defined('JPATH_BASE') or die;
 
-use Joomla\Utilities\ArrayHelper;
+use Joomla\CMS\Menu\MenuHelper;
 
 JFormHelper::loadFieldClass('list');
 
@@ -38,11 +38,11 @@ class JFormFieldMenuPreset extends JFormFieldList
 	protected function getOptions()
 	{
 		$options = array();
-		$presets = \MenusHelper::getPresets();
+		$presets = MenuHelper::getPresets();
 
-		foreach ($presets as $name => $path)
+		foreach ($presets as $preset)
 		{
-			$options[] = JHtml::_('select.option', $name, ucwords($name));
+			$options[] = JHtml::_('select.option', $preset->name, JText::_($preset->title));
 		}
 
 		return $options;
