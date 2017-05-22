@@ -11,6 +11,7 @@
 			type="component"
 			title="MOD_MENU_CONTROL_PANEL"
 			link="index.php"
+			element="com_cpanel"
 			class="class:cpanel"
 		/>
 		<menuitem
@@ -74,7 +75,7 @@
 				element="com_users"
 				link="index.php?option=com_users&amp;task=user.add"
 				class="class:newarticle"
-			    scope="edit"
+				scope="edit"
 			/>
 		</menuitem>
 		<menuitem
@@ -181,7 +182,7 @@
 				element="com_menus"
 				link="index.php?option=com_menus&amp;view=menu&amp;layout=edit"
 				class="class:newarticle"
-			    scope="edit"
+				scope="edit"
 			/>
 		</menuitem>
 		<menuitem

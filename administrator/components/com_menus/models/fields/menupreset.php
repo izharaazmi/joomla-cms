@@ -24,6 +24,7 @@ class JFormFieldMenuPreset extends JFormFieldList
 	 * The form field type.
 	 *
 	 * @var     string
+	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
 	protected $type = 'MenuPreset';
@@ -45,6 +46,6 @@ class JFormFieldMenuPreset extends JFormFieldList
 			$options[] = JHtml::_('select.option', $preset->name, JText::_($preset->title));
 		}
 
-		return $options;
+		return array_merge(parent::getOptions(), $options);
 	}
 }

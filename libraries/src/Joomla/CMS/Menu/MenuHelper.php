@@ -219,24 +219,28 @@ class MenuHelper
 	/**
 	 * Load the menu items from a preset file into a hierarchical list of objects
 	 *
-	 * @param   string  $name  The preset name
+	 * @param   string  $name      The preset name
+	 * @param   bool    $fallback  Fallback to default (joomla) preset if the specified one could not be loaded?
 	 *
 	 * @return  \stdClass[]
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
-	public static function loadPreset($name)
+	public static function loadPreset($name, $fallback = true)
 	{
 		$items   = array();
 		$presets = static::getPresets();
 
-		if (isset($presets[$name]) && ($xml = simplexml_load_file($presets[$name]->path)) && $xml instanceof \SimpleXMLElement)
+		if (isset($presets[$name]) && ($xml = simplexml_load_file($presets[$name]->path, null, LIBXML_NOCDATA)) && $xml instanceof \SimpleXMLElement)
 		{
 			static::loadXml($xml, $items);
 		}
-		elseif (isset($presets['joomla']) && ($xml = simplexml_load_file($presets['joomla']->path)) && $xml instanceof \SimpleXMLElement)
+		elseif ($fallback && isset($presets['joomla']))
 		{
-			static::loadXml($xml, $items);
+			if (($xml = simplexml_load_file($presets['joomla']->path, null, LIBXML_NOCDATA)) && $xml instanceof \SimpleXMLElement)
+			{
+				static::loadXml($xml, $items);
+			}
 		}
 
 		return $items;
@@ -333,17 +337,19 @@ class MenuHelper
 	 */
 	protected static function parseXmlNode($node, $replace = array())
 	{
-		$item = new \stdClass;
+		$item   = new \stdClass;
+		$params = trim((string) $node->params);
 
+		$item->id         = null;
 		$item->type       = (string) $node['type'];
 		$item->title      = (string) $node['title'];
 		$item->link       = (string) $node['link'];
 		$item->element    = (string) $node['element'];
 		$item->class      = (string) $node['class'];
 		$item->browserNav = (string) $node['target'];
-		$item->scope      = (string) $node['scope'] ?: 'default';
 		$item->access     = (int) $node['access'];
-		$item->params     = new Registry(trim($node->params));
+		$item->params     = new Registry($params ? json_decode($params) : array());
+		$item->scope      = (string) $node['scope'] ?: 'default';
 		$item->submenu    = array();
 
 		// Translate attributes for iterator values

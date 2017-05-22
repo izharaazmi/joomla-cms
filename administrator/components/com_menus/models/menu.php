@@ -69,11 +69,11 @@ class MenusModelMenu extends JModelForm
 	/**
 	 * Returns a Table object, always creating it
 	 *
-	 * @param   type    $type    The table type to instantiate
+	 * @param   string  $type    The table type to instantiate
 	 * @param   string  $prefix  A prefix for the table class name. Optional.
 	 * @param   array   $config  Configuration array for model. Optional.
 	 *
-	 * @return  JTable    A database object
+	 * @return  JTable  A database object
 	 *
 	 * @since   1.6
 	 */
@@ -197,6 +197,13 @@ class MenusModelMenu extends JModelForm
 		$id         = (!empty($data['id'])) ? $data['id'] : (int) $this->getState('menu.id');
 		$isNew      = true;
 
+		if (isset($data['preset']))
+		{
+			$preset = $data['preset'];
+
+			unset($data['preset']);
+		}
+
 		// Get a row instance.
 		$table = $this->getTable();
 
@@ -241,6 +248,21 @@ class MenusModelMenu extends JModelForm
 		$dispatcher->trigger('onContentAfterSave', array($this->_context, &$table, $isNew));
 
 		$this->setState('menu.id', $table->id);
+
+		if (isset($preset) && $table->get('client_id') == 1)
+		{
+			try
+			{
+				MenusHelper::installPreset($preset, $table->get('menutype'));
+			}
+			catch (Exception $e)
+			{
+				// Save was successful but the preset could not be loaded. Let it through with just a warning
+				$this->setError(JText::sprintf('COM_MENUS_PRESET_IMPORT_FAILED', $e->getMessage()));
+
+				return false;
+			}
+		}
 
 		// Clean the cache
 		$this->cleanCache();

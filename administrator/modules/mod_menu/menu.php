@@ -235,9 +235,10 @@ class JAdminCssMenu
 	 */
 	protected function filter($items)
 	{
-		$result = array();
-		$user   = JFactory::getUser();
-		$levels = $user->getAuthorisedViewLevels();
+		$result   = array();
+		$user     = JFactory::getUser();
+		$levels   = $user->getAuthorisedViewLevels();
+		$language = JFactory::getLanguage();
 
 		foreach ($items as $i => &$item)
 		{
@@ -269,6 +270,13 @@ class JAdminCssMenu
 			if (!in_array($item->type, array('separator', 'heading', 'container')) && trim($item->link) == '')
 			{
 				continue;
+			}
+
+			// Ok, load language
+			if ($item->element)
+			{
+				$language->load($item->element .'.sys', JPATH_ADMINISTRATOR, null, false, true) ||
+				$language->load($item->element .'.sys', JPATH_ADMINISTRATOR . '/components/' . $item->element, null, false, true);
 			}
 
 			// Process any children if exists
