@@ -106,6 +106,8 @@ class MenusViewMenus extends JViewLegacy
 
 		if ($canDo->get('core.admin') || $canDo->get('core.options'))
 		{
+			JToolbarHelper::custom('menu.exportXml', 'download', 'download', 'COM_MENUS_MENU_EXPORT_BUTTON', true);
+
 			JToolbarHelper::divider();
 			JToolbarHelper::preferences('com_menus');
 		}
