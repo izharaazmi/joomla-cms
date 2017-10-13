@@ -10,7 +10,6 @@ namespace Joomla\CMS\Client\Ftp;
 
 defined('JPATH_PLATFORM') or die;
 
-use Joomla\CMS\Client\FtpClient;
 use Joomla\CMS\Log\Log;
 
 /**
@@ -18,8 +17,34 @@ use Joomla\CMS\Log\Log;
  *
  * @since  __DEPLOY_VERSION__
  */
-class SocketFtpClient extends FtpClient
+class SocketFtpClient extends AbstractFtpClient
 {
+	/**
+	 * @var    resource  Data port connection resource
+	 * @since  __DEPLOY_VERSION__
+	 */
+	protected $_dataconn = null;
+
+	/**
+	 * @var    array  Passive connection information
+	 * @since  __DEPLOY_VERSION__
+	 */
+	protected $_pasv = null;
+
+	/**
+	 * @var    string  Response Message
+	 * @since  __DEPLOY_VERSION__
+	 */
+	protected $_response = null;
+
+	/**
+	 * Array to hold native line ending characters
+	 *
+	 * @var    array
+	 * @since  __DEPLOY_VERSION__
+	 */
+	protected $_lineEndings = array('UNIX' => "\n", 'WIN' => "\r\n");
+
 	/**
 	 * @var   int
 	 *
@@ -431,7 +456,7 @@ class SocketFtpClient extends FtpClient
 	public function read($remote, &$buffer)
 	{
 		// Determine file type
-		$mode = $this->_findMode($remote);
+		$mode = $this->findMode($remote);
 
 		$this->_mode($mode);
 
@@ -465,12 +490,7 @@ class SocketFtpClient extends FtpClient
 		// Let's try to cleanup some line endings if it is ascii
 		if ($mode == FTP_ASCII)
 		{
-			$os = 'UNIX';
-
-			if (IS_WIN)
-			{
-				$os = 'WIN';
-			}
+			$os = IS_WIN ? 'WIN' : 'UNIX';
 
 			$buffer = preg_replace('/' . CRLF . '/', $this->_lineEndings[$os], $buffer);
 		}
@@ -498,7 +518,7 @@ class SocketFtpClient extends FtpClient
 	public function get($local, $remote)
 	{
 		// Determine file type
-		$mode = $this->_findMode($remote);
+		$mode = $this->findMode($remote);
 
 		$this->_mode($mode);
 
@@ -569,7 +589,7 @@ class SocketFtpClient extends FtpClient
 		}
 
 		// Determine file type
-		$mode = $this->_findMode($remote);
+		$mode = $this->findMode($remote);
 
 		$this->_mode($mode);
 
@@ -656,7 +676,7 @@ class SocketFtpClient extends FtpClient
 	public function write($remote, $buffer)
 	{
 		// Determine file type
-		$mode = $this->_findMode($remote);
+		$mode = $this->findMode($remote);
 
 		// First we need to set the transfer mode
 		$this->_mode($mode);
@@ -719,7 +739,7 @@ class SocketFtpClient extends FtpClient
 	public function append($remote, $buffer)
 	{
 		// Determine file type
-		$mode = $this->_findMode($remote);
+		$mode = $this->findMode($remote);
 
 		// First we need to set the transfer mode
 		$this->_mode($mode);

@@ -10,7 +10,6 @@ namespace Joomla\CMS\Client\Ftp;
 
 defined('JPATH_PLATFORM') or die;
 
-use Joomla\CMS\Client\FtpClient;
 use Joomla\CMS\Log\Log;
 
 /**
@@ -18,7 +17,7 @@ use Joomla\CMS\Log\Log;
  *
  * @since  __DEPLOY_VERSION__
  */
-class NativeFtpClient extends FtpClient
+class NativeFtpClient extends AbstractFtpClient
 {
 	/**
 	 * FtpClient object constructor
@@ -379,7 +378,7 @@ class NativeFtpClient extends FtpClient
 	public function read($remote, &$buffer)
 	{
 		// Determine file type
-		$mode = $this->_findMode($remote);
+		$mode = $this->findMode($remote);
 
 		// Turn passive mode on
 		if (@ftp_pasv($this->_conn, true) === false)
@@ -426,7 +425,7 @@ class NativeFtpClient extends FtpClient
 	public function get($local, $remote)
 	{
 		// Determine file type
-		$mode = $this->_findMode($remote);
+		$mode = $this->findMode($remote);
 
 		// Turn passive mode on
 		if (@ftp_pasv($this->_conn, true) === false)
@@ -466,7 +465,7 @@ class NativeFtpClient extends FtpClient
 		}
 
 		// Determine file type
-		$mode = $this->_findMode($remote);
+		$mode = $this->findMode($remote);
 
 		// Turn passive mode on
 		if (@ftp_pasv($this->_conn, true) === false)
@@ -499,7 +498,7 @@ class NativeFtpClient extends FtpClient
 	public function write($remote, $buffer)
 	{
 		// Determine file type
-		$mode = $this->_findMode($remote);
+		$mode = $this->findMode($remote);
 
 		// Turn passive mode on
 		if (@ftp_pasv($this->_conn, true) === false)
@@ -539,7 +538,7 @@ class NativeFtpClient extends FtpClient
 	public function append($remote, $buffer)
 	{
 		// Determine file type
-		$mode = $this->_findMode($remote);
+		$mode = $this->findMode($remote);
 
 		// Turn passive mode on
 		if (@ftp_pasv($this->_conn, true) === false)

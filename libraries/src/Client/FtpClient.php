@@ -11,6 +11,7 @@ namespace Joomla\CMS\Client;
 defined('JPATH_PLATFORM') or die;
 
 use Joomla\CMS\Log\Log;
+use Joomla\CMS\Client\Ftp\AbstractFtpClient;
 
 /** Error Codes:
  * - 30 : Unable to connect to host
@@ -129,13 +130,13 @@ class FtpClient
 	protected $_lineEndings = array('UNIX' => "\n", 'WIN' => "\r\n");
 
 	/**
-	 * @var    FtpClient[]  FtpClient instances container.
+	 * @var    AbstractFtpClient[]  FtpClient instances container.
 	 * @since  12.1
 	 */
 	protected static $instances = array();
 
 	/**
-	 * @var  static
+	 * @var  AbstractFtpClient
 	 *
 	 * @since   __DEPLOY_VERSION__
 	 */
@@ -147,28 +148,16 @@ class FtpClient
 	 * @param   array  $options  Associative array of options to set
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function __construct(array $options = array())
 	{
-		// Earlier FtpClient could be instantiated directly. We'd now use this as decorator for the new objects to provide B/C
-		if (get_class($this) == __CLASS__)
-		{
-			$class = FTP_NATIVE ? 'Joomla\CMS\Client\Ftp\NativeFtpClient' : 'Joomla\CMS\Client\Ftp\SocketFtpClient';
+		// Earlier FtpClient could be instantiated directly.
+		// We'd now use this as decorator for the new objects to provide B/C.
+		$class = FTP_NATIVE ? 'Joomla\CMS\Client\Ftp\NativeFtpClient' : 'Joomla\CMS\Client\Ftp\SocketFtpClient';
 
-			$this->instance = new $class($options);
-
-			$this->instance->setOptions($options);
-		}
-		else
-		{
-			// If default transfer type is not set, set it to autoascii detect
-			if (!isset($options['type']))
-			{
-				$options['type'] = FTP_BINARY;
-			}
-
-			$this->setOptions($options);
-		}
+		$this->instance = new $class($options);
 	}
 
 	/**
@@ -180,10 +169,7 @@ class FtpClient
 	 */
 	public function __destruct()
 	{
-		if ($this->isConnected())
-		{
-			$this->quit();
-		}
+		// The decorated instance will handle destruct
 	}
 
 	/**
@@ -201,7 +187,7 @@ class FtpClient
 	 * @param   string  $user     Username to use for a connection
 	 * @param   string  $pass     Password to use for a connection
 	 *
-	 * @return  FtpClient        The FTP Client object.
+	 * @return  AbstractFtpClient  The FTP Client object.
 	 *
 	 * @since   12.1
 	 */
@@ -243,20 +229,12 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function setOptions(array $options)
 	{
-		if (isset($options['type']))
-		{
-			$this->_type = $options['type'];
-		}
-
-		if (isset($options['timeout']))
-		{
-			$this->_timeout = $options['timeout'];
-		}
-
-		return true;
+		return $this->instance->setOptions($options);
 	}
 
 	/**
@@ -268,6 +246,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function connect($host = '127.0.0.1', $port = 21)
 	{
@@ -280,6 +260,8 @@ class FtpClient
 	 * @return  boolean  True if connected
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function isConnected()
 	{
@@ -295,6 +277,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function login($user = 'anonymous', $pass = 'jftp@joomla.org')
 	{
@@ -307,6 +291,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function quit()
 	{
@@ -319,6 +305,8 @@ class FtpClient
 	 * @return  string   Current working directory
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function pwd()
 	{
@@ -331,6 +319,8 @@ class FtpClient
 	 * @return  string   System identifier string
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function syst()
 	{
@@ -345,6 +335,8 @@ class FtpClient
 	 * @return  boolean True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function chdir($path)
 	{
@@ -359,6 +351,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function reinit()
 	{
@@ -374,6 +368,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function rename($from, $to)
 	{
@@ -389,6 +385,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function chmod($path, $mode)
 	{
@@ -403,6 +401,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function delete($path)
 	{
@@ -417,6 +417,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function mkdir($path)
 	{
@@ -431,6 +433,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function restart($point)
 	{
@@ -445,6 +449,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function create($path)
 	{
@@ -460,6 +466,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function read($remote, &$buffer)
 	{
@@ -475,6 +483,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function get($local, $remote)
 	{
@@ -490,6 +500,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function store($local, $remote = null)
 	{
@@ -505,6 +517,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function write($remote, $buffer)
 	{
@@ -520,6 +534,8 @@ class FtpClient
 	 * @return  boolean  True if successful
 	 *
 	 * @since   3.6.0
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function append($remote, $buffer)
 	{
@@ -534,6 +550,8 @@ class FtpClient
 	 * @return  mixed  number of bytes or false on error
 	 *
 	 * @since   3.6.0
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function size($remote)
 	{
@@ -551,6 +569,8 @@ class FtpClient
 	 * @return  string  Directory listing
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function listNames($path = null)
 	{
@@ -566,143 +586,12 @@ class FtpClient
 	 * @return  mixed  If $type is raw: string Directory listing, otherwise array of string with file-names
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	public function listDetails($path = null, $type = 'all')
 	{
 		return $this->instance->listDetails($path, $type);
-	}
-
-	/**
-	 * Parse the raw list of files and folders in a standard array structure
-	 *
-	 * @param   array   $contents  The array containing lines from the ftp server output
-	 * @param   string  $type      Return type [raw|all|folders|files]
-	 *
-	 * @return  array|boolean
-	 *
-	 * @since   __DEPLOY_VERSION__
-	 */
-	protected function parseList($contents, $type)
-	{
-		// If we received the listing of an empty directory, we are done as well
-		if (empty($contents[0]))
-		{
-			return array();
-		}
-
-		// If the server returned the number of results in the first response, let's dump it
-		if (strtolower(substr($contents[0], 0, 6)) == 'total ')
-		{
-			array_shift($contents);
-
-			if (!isset($contents[0]) || empty($contents[0]))
-			{
-				return array();
-			}
-		}
-
-		// Regular expressions for the directory listing parsing.
-		$regexps = array(
-			'UNIX' => '#([-dl][rwxstST-]+).* ([0-9]*) ([a-zA-Z0-9]+).* ([a-zA-Z0-9]+).* ([0-9]*)'
-				. ' ([a-zA-Z]+[0-9: ]*[0-9])[ ]+(([0-9]{1,2}:[0-9]{2})|[0-9]{4}) (.+)#',
-			'MAC'  => '#([-dl][rwxstST-]+).* ?([0-9 ]*)?([a-zA-Z0-9]+).* ([a-zA-Z0-9]+).* ([0-9]*)'
-				. ' ([a-zA-Z]+[0-9: ]*[0-9])[ ]+(([0-9]{2}:[0-9]{2})|[0-9]{4}) (.+)#',
-			'WIN'  => '#([0-9]{2})-([0-9]{2})-([0-9]{2}) +([0-9]{2}):([0-9]{2})(AM|PM) +([0-9]+|<DIR>) +(.+)#',
-		);
-
-		// Find out the format of the directory listing by matching one of the regexps
-		$osType = null;
-		$regexp = null;
-
-		foreach ($regexps as $k => $v)
-		{
-			if (@preg_match($v, $contents[0]))
-			{
-				$osType = $k;
-				$regexp = $v;
-				break;
-			}
-		}
-
-		if (!$osType)
-		{
-			Log::add(\JText::_('JLIB_CLIENT_ERROR_JFTP_LISTDETAILS_UNRECOGNISED'), Log::WARNING, 'jerror');
-
-			return false;
-		}
-
-		$dir_list = array();
-
-		// Here is where it is going to get dirty....
-		foreach ($contents as $file)
-		{
-			$tmp_array = null;
-			$regs      = null;
-
-			if (@preg_match($regexp, $file, $regs))
-			{
-				if ($osType == 'UNIX' || $osType == 'MAC')
-				{
-					$fType = (int) strpos('-dl', $regs[1]{0});
-
-					// $tmp_array['line'] = $regs[0];
-					$tmp_array['type']   = $fType;
-					$tmp_array['rights'] = $regs[1];
-
-					// $tmp_array['number'] = $regs[2];
-					$tmp_array['user']  = $regs[3];
-					$tmp_array['group'] = $regs[4];
-					$tmp_array['size']  = $regs[5];
-					$tmp_array['date']  = @date('m-d', strtotime($regs[6]));
-					$tmp_array['time']  = $regs[7];
-					$tmp_array['name']  = $regs[9];
-				}
-				else
-				{
-					$fType     = (int) ($regs[7] == '<DIR>');
-					$timestamp = strtotime("$regs[3]-$regs[1]-$regs[2] $regs[4]:$regs[5]$regs[6]");
-
-					// $tmp_array['line'] = $regs[0];
-					$tmp_array['type']   = $fType;
-					$tmp_array['rights'] = '';
-
-					// $tmp_array['number'] = 0;
-					$tmp_array['user']  = '';
-					$tmp_array['group'] = '';
-					$tmp_array['size']  = (int) $regs[7];
-					$tmp_array['date']  = date('m-d', $timestamp);
-					$tmp_array['time']  = date('H:i', $timestamp);
-					$tmp_array['name']  = $regs[8];
-				}
-			}
-
-			if (!is_array($tmp_array))
-			{
-				continue;
-			}
-
-			// If we just want files, do not add a folder
-			if ($type == 'files' && $tmp_array['type'] == 1)
-			{
-				continue;
-			}
-
-			// If we just want folders, do not add a file
-			if ($type == 'folders' && $tmp_array['type'] == 0)
-			{
-				continue;
-			}
-
-			// Exclude dot items
-			if ($tmp_array['name'] == '.' || $tmp_array['name'] == '..')
-			{
-				continue;
-			}
-
-			$dir_list[] = $tmp_array;
-		}
-
-		return $dir_list;
 	}
 
 	/**
@@ -713,6 +602,8 @@ class FtpClient
 	 * @return  integer Transfer-mode for this filetype [FTP_ASCII|FTP_BINARY]
 	 *
 	 * @since   12.1
+	 *
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	protected function _findMode($fileName)
 	{
@@ -844,7 +735,7 @@ class FtpClient
 	 *
 	 * @since   12.1
 	 *
-	 * @deprecated   Use SocketFtpClient object
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	protected function _passive()
 	{
@@ -935,7 +826,7 @@ class FtpClient
 	 *
 	 * @since   12.1
 	 *
-	 * @deprecated   Use SocketFtpClient object
+	 * @deprecated   Use NativeFtpClient or SocketFtpClient
 	 */
 	protected function _mode($mode)
 	{
