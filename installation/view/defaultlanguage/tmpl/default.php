@@ -2,12 +2,24 @@
 /**
  * @package    Joomla.Installation
  *
- * @copyright  Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
+ * @copyright  Copyright (C) 2005 - 2018 Open Source Matters, Inc. All rights reserved.
  * @license    GNU General Public License version 2 or later; see LICENSE.txt
  */
 
 defined('_JEXEC') or die;
 
+JFactory::getDocument()->addScriptDeclaration(
+<<<JS
+	jQuery(document).ready(function($) {
+		$(':input[name="jform[activateMultilanguage]"]').each(function(el){
+			$(this).click(function(){Install.toggle('installLocalisedContent', 'activateMultilanguage', 1);});
+			$(this).click(function(){Install.toggle('activatePluginLanguageCode', 'activateMultilanguage', 1);});
+		});
+		Install.toggle('installLocalisedContent', 'activateMultilanguage', 1);
+		Install.toggle('activatePluginLanguageCode', 'activateMultilanguage', 1);
+	});
+JS
+);
 ?>
 <?php echo JHtml::_('InstallationHtml.helper.stepbarlanguages'); ?>
 <form action="index.php" method="post" id="adminForm" class="form-validate form-horizontal">
@@ -36,7 +48,6 @@ defined('_JEXEC') or die;
 			<?php endif; ?>
 		</div>
 	</div>
-
 	<h3><?php echo JText::_('INSTL_DEFAULTLANGUAGE_MULTILANGUAGE_TITLE'); ?></h3>
 	<hr class="hr-condensed" />
 	<p><?php echo JText::_('INSTL_DEFAULTLANGUAGE_MULTILANGUAGE_DESC'); ?></p>
@@ -52,7 +63,7 @@ defined('_JEXEC') or die;
 		</div>
 	</div>
 	<div id="multilanguageOptions">
-		<div class="control-group" id="installLocalisedContent" style="display:auto;">
+		<div class="control-group" id="installLocalisedContent" style="display:none;">
 			<div class="control-label">
 				<?php echo $this->form->getLabel('installLocalisedContent'); ?>
 			</div>
@@ -63,7 +74,7 @@ defined('_JEXEC') or die;
 				</p>
 			</div>
 		</div>
-		<div class="control-group" id="activatePluginLanguageCode" style="display:auto;">
+		<div class="control-group" id="activatePluginLanguageCode" style="display:none;">
 			<div class="control-label">
 				<?php echo $this->form->getLabel('activatePluginLanguageCode'); ?>
 			</div>
@@ -75,8 +86,6 @@ defined('_JEXEC') or die;
 			</div>
 		</div>
 	</div>
-
-
 	<h3><?php echo JText::_('INSTL_DEFAULTLANGUAGE_ADMINISTRATOR'); ?></h3>
 	<hr class="hr-condensed" />
 	<p><?php echo JText::_('INSTL_DEFAULTLANGUAGE_DESC'); ?></p>
@@ -104,7 +113,7 @@ defined('_JEXEC') or die;
 						name="administratorlang"
 						value="<?php echo $lang->language; ?>"
 						<?php if ($lang->published) echo 'checked="checked"'; ?>
-						/>
+					/>
 				</td>
 				<td align="center">
 					<label for="admin-language-cb<?php echo $i; ?>">
@@ -145,7 +154,7 @@ defined('_JEXEC') or die;
 						name="frontendlang"
 						value="<?php echo $lang->language; ?>"
 						<?php if ($lang->published) echo 'checked="checked"'; ?>
-						/>
+					/>
 				</td>
 				<td align="center">
 					<label for="site-language-cb<?php echo $i; ?>">
@@ -191,10 +200,10 @@ defined('_JEXEC') or die;
 </form>
 
 <script type="text/javascript">
-	window.addEvent('domready', function() {
-		document.getElements('input[name=jform[activateMultilanguage]]').each(function(el){
-			el.addEvent('click', function(){Install.toggle('installLocalisedContent', 'activateMultilanguage', 1);});
-			el.addEvent('click', function(){Install.toggle('activatePluginLanguageCode', 'activateMultilanguage', 1);});
+	jQuery('input[name="jform[activateMultilanguage]"]').each(function(index, el) {
+		jQuery(el).on('click', function() {
+			Install.toggle('installLocalisedContent', 'activateMultilanguage', 1);
+			Install.toggle('activatePluginLanguageCode', 'activateMultilanguage', 1);
 		});
 		Install.toggle('installLocalisedContent', 'activateMultilanguage', 1);
 		Install.toggle('activatePluginLanguageCode', 'activateMultilanguage', 1);

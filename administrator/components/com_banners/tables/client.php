@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_banners
  *
- * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2018 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -21,7 +21,7 @@ class BannersTableClient extends JTable
 	/**
 	 * Constructor
 	 *
-	 * @param   JDatabaseDriver  &$db  Database connector object
+	 * @param   JDatabaseDriver  $db  Database connector object
 	 *
 	 * @since   1.5
 	 */
@@ -86,10 +86,10 @@ class BannersTableClient extends JTable
 
 		// Update the publishing state for rows with the given primary keys.
 		$this->_db->setQuery(
-			'UPDATE ' . $this->_db->quoteName($this->_tbl) .
-			' SET ' . $this->_db->quoteName('state') . ' = ' . (int) $state .
-			' WHERE (' . $where . ')' .
-			$checkin
+			'UPDATE ' . $this->_db->quoteName($this->_tbl)
+			. ' SET ' . $this->_db->quoteName('state') . ' = ' . (int) $state
+			. ' WHERE (' . $where . ')'
+			. $checkin
 		);
 
 		try

@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_languages
  *
- * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2018 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -42,9 +42,7 @@ class LanguagesViewLanguages extends JViewLegacy
 		// Check for errors.
 		if (count($errors = $this->get('Errors')))
 		{
-			JError::raiseError(500, implode("\n", $errors));
-
-			return false;
+			throw new Exception(implode("\n", $errors), 500);
 		}
 
 		$this->addToolbar();
@@ -88,7 +86,7 @@ class LanguagesViewLanguages extends JViewLegacy
 
 		if ($this->state->get('filter.published') == -2 && $canDo->get('core.delete'))
 		{
-			JToolbarHelper::deleteList('', 'languages.delete', 'JTOOLBAR_EMPTY_TRASH');
+			JToolbarHelper::deleteList('JGLOBAL_CONFIRM_DELETE', 'languages.delete', 'JTOOLBAR_EMPTY_TRASH');
 			JToolbarHelper::divider();
 		}
 		elseif ($canDo->get('core.edit.state'))
@@ -124,15 +122,15 @@ class LanguagesViewLanguages extends JViewLegacy
 	protected function getSortFields()
 	{
 		return array(
-				'a.ordering' => JText::_('JGRID_HEADING_ORDERING'),
-				'a.published' => JText::_('JSTATUS'),
-				'a.title' => JText::_('JGLOBAL_TITLE'),
-				'a.title_native' => JText::_('COM_LANGUAGES_HEADING_TITLE_NATIVE'),
-				'a.lang_code' => JText::_('COM_LANGUAGES_FIELD_LANG_TAG_LABEL'),
-				'a.sef' => JText::_('COM_LANGUAGES_FIELD_LANG_CODE_LABEL'),
-				'a.image' => JText::_('COM_LANGUAGES_HEADING_LANG_IMAGE'),
-				'a.access' => JText::_('JGRID_HEADING_ACCESS'),
-				'a.lang_id' => JText::_('JGRID_HEADING_ID')
+			'a.ordering'     => JText::_('JGRID_HEADING_ORDERING'),
+			'a.published'    => JText::_('JSTATUS'),
+			'a.title'        => JText::_('JGLOBAL_TITLE'),
+			'a.title_native' => JText::_('COM_LANGUAGES_HEADING_TITLE_NATIVE'),
+			'a.lang_code'    => JText::_('COM_LANGUAGES_FIELD_LANG_TAG_LABEL'),
+			'a.sef'          => JText::_('COM_LANGUAGES_FIELD_LANG_CODE_LABEL'),
+			'a.image'        => JText::_('COM_LANGUAGES_HEADING_LANG_IMAGE'),
+			'a.access'       => JText::_('JGRID_HEADING_ACCESS'),
+			'a.lang_id'      => JText::_('JGRID_HEADING_ID'),
 		);
 	}
 }

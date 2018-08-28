@@ -3,11 +3,14 @@
  * @package     Joomla.Plugin
  * @subpackage  System.stats
  *
- * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2018 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
 defined('_JEXEC') or die;
+
+// Uncomment the following line to enable debug mode for testing purposes. Note: statistics will be sent on every page load
+// define('PLG_SYSTEM_STATS_DEBUG', 1);
 
 /**
  * Statistics system plugin. This sends anonymous data back to the Joomla! Project about the
@@ -44,14 +47,6 @@ class PlgSystemStats extends JPlugin
 	protected $app;
 
 	/**
-	 * Load plugin language files automatically
-	 *
-	 * @var    boolean
-	 * @since  3.5
-	 */
-	protected $autoloadLanguage = true;
-
-	/**
 	 * Database object
 	 *
 	 * @var    JDatabaseDriver
@@ -60,7 +55,7 @@ class PlgSystemStats extends JPlugin
 	protected $db;
 
 	/**
-	 * Url to send the statistics.
+	 * URL to send the statistics.
 	 *
 	 * @var    string
 	 * @since  3.5
@@ -84,7 +79,7 @@ class PlgSystemStats extends JPlugin
 	 */
 	public function onAfterInitialise()
 	{
-		if (!$this->app->isAdmin() || !$this->isAllowedUser())
+		if (!$this->app->isClient('administrator') || !$this->isAllowedUser())
 		{
 			return;
 		}
@@ -94,13 +89,16 @@ class PlgSystemStats extends JPlugin
 			return;
 		}
 
-		if (JUri::getInstance()->getVar("tmpl") === "component")
+		if (JUri::getInstance()->getVar('tmpl') === 'component')
 		{
 			return;
 		}
 
+		// Load plugin language files only when needed (ex: they are not needed in site client).
+		$this->loadLanguage();
+
 		JHtml::_('jquery.framework');
-		JHtml::script('plg_system_stats/stats.js', false, true, false);
+		JHtml::_('script', 'plg_system_stats/stats.js', array('version' => 'auto', 'relative' => true));
 	}
 
 	/**
@@ -230,6 +228,37 @@ class PlgSystemStats extends JPlugin
 	}
 
 	/**
+	 * Get the data through events
+	 *
+	 * @param   string  $context  Context where this will be called from
+	 *
+	 * @return  array
+	 *
+	 * @since   3.5
+	 */
+	public function onGetStatsData($context)
+	{
+		return $this->getStatsData();
+	}
+
+	/**
+	 * Debug a layout of this plugin
+	 *
+	 * @param   string  $layoutId  Layout identifier
+	 * @param   array   $data      Optional data for the layout
+	 *
+	 * @return  string
+	 *
+	 * @since   3.5
+	 */
+	public function debug($layoutId, $data = array())
+	{
+		$data = array_merge($this->getLayoutData(), $data);
+
+		return $this->getRenderer($layoutId)->debug($data);
+	}
+
+	/**
 	 * Get the data for the layout
 	 *
 	 * @return  array
@@ -248,11 +277,11 @@ class PlgSystemStats extends JPlugin
 	/**
 	 * Get the layout paths
 	 *
-	 * @return  array()
+	 * @return  array
 	 *
 	 * @since   3.5
 	 */
-	protected function getLayoutsPaths()
+	protected function getLayoutPaths()
 	{
 		$template = JFactory::getApplication()->getTemplate();
 
@@ -275,7 +304,7 @@ class PlgSystemStats extends JPlugin
 	{
 		$renderer = new JLayoutFile($layoutId);
 
-		$renderer->setIncludePaths($this->getLayoutsPaths());
+		$renderer->setIncludePaths($this->getLayoutPaths());
 
 		return $renderer;
 	}
@@ -283,7 +312,7 @@ class PlgSystemStats extends JPlugin
 	/**
 	 * Get the data that will be sent to the stats server.
 	 *
-	 * @return  array.
+	 * @return  array
 	 *
 	 * @since   3.5
 	 */
@@ -337,7 +366,7 @@ class PlgSystemStats extends JPlugin
 	 */
 	private function isDebugEnabled()
 	{
-		return ((int) $this->params->get('debug', 0) === 1);
+		return defined('PLG_SYSTEM_STATS_DEBUG');
 	}
 
 	/**
@@ -376,7 +405,24 @@ class PlgSystemStats extends JPlugin
 	 */
 	private function isAjaxRequest()
 	{
-		return strtolower($this->app->input->server->get('HTTP_X_REQUESTED_WITH', '')) == 'xmlhttprequest';
+		return strtolower($this->app->input->server->get('HTTP_X_REQUESTED_WITH', '')) === 'xmlhttprequest';
+	}
+
+	/**
+	 * Render a layout of this plugin
+	 *
+	 * @param   string  $layoutId  Layout identifier
+	 * @param   array   $data      Optional data for the layout
+	 *
+	 * @return  string
+	 *
+	 * @since   3.5
+	 */
+	public function render($layoutId, $data = array())
+	{
+		$data = array_merge($this->getLayoutData(), $data);
+
+		return $this->getRenderer($layoutId)->render($data);
 	}
 
 	/**
@@ -392,7 +438,7 @@ class PlgSystemStats extends JPlugin
 		$this->params->set('lastrun', time());
 		$this->params->set('unique_id', $this->getUniqueId());
 		$interval = (int) $this->params->get('interval', 12);
-		$this->params->set('interval', $interval ? $interval : 12);
+		$this->params->set('interval', $interval ?: 12);
 
 		$query = $this->db->getQuery(true)
 				->update($this->db->quoteName('#__extensions'))
@@ -454,7 +500,7 @@ class PlgSystemStats extends JPlugin
 		try
 		{
 			// Don't let the request take longer than 2 seconds to avoid page timeout issues
-			JHttpFactory::getHttp()->post($this->serverUrl, $this->getStatsData(), null, 2);
+			$response = JHttpFactory::getHttp()->post($this->serverUrl, $this->getStatsData(), null, 2);
 		}
 		catch (UnexpectedValueException $e)
 		{
@@ -472,6 +518,13 @@ class PlgSystemStats extends JPlugin
 			throw new RuntimeException('Unexpected error connecting to statistics server: ' . $e->getMessage(), 500);
 		}
 
+		if ($response->code !== 200)
+		{
+			$data = json_decode($response->body);
+
+			throw new RuntimeException('Could not send site statistics to remote server: ' . $data->message, $response->code);
+		}
+
 		return true;
 	}
 
@@ -487,8 +540,6 @@ class PlgSystemStats extends JPlugin
 	 */
 	private function clearCacheGroups(array $clearGroups, array $cacheClients = array(0, 1))
 	{
-		$conf = JFactory::getConfig();
-
 		foreach ($clearGroups as $group)
 		{
 			foreach ($cacheClients as $client_id)
@@ -497,8 +548,7 @@ class PlgSystemStats extends JPlugin
 				{
 					$options = array(
 						'defaultgroup' => $group,
-						'cachebase'    => ($client_id) ? JPATH_ADMINISTRATOR . '/cache' :
-							$conf->get('cache_path', JPATH_SITE . '/cache')
+						'cachebase'    => $client_id ? JPATH_ADMINISTRATOR . '/cache' : $this->app->get('cache_path', JPATH_SITE . '/cache')
 					);
 
 					$cache = JCache::getInstance('callback', $options);

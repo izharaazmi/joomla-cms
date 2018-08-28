@@ -3,7 +3,7 @@
  * @package     Joomla.Plugin
  * @subpackage  Captcha
  *
- * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2018 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -40,27 +40,30 @@ class PlgCaptchaRecaptcha extends JPlugin
 	{
 		$pubkey = $this->params->get('public_key', '');
 
-		if ($pubkey == null || $pubkey == '')
+		if ($pubkey === '')
 		{
 			throw new Exception(JText::_('PLG_RECAPTCHA_ERROR_NO_PUBLIC_KEY'));
 		}
 
-		if ($this->params->get('version', '1.0') == '1.0')
+		if ($this->params->get('version', '1.0') === '1.0')
 		{
 			JHtml::_('jquery.framework');
 
 			$theme	= $this->params->get('theme', 'clean');
 			$file	= 'https://www.google.com/recaptcha/api/js/recaptcha_ajax.js';
 
+			JHtml::_('script', $file);
 			JFactory::getDocument()->addScriptDeclaration('jQuery( document ).ready(function()
 				{Recaptcha.create("' . $pubkey . '", "' . $id . '", {theme: "' . $theme . '",' . $this->_getLanguage() . 'tabindex: 0});});');
 		}
 		else
 		{
-			$file	= 'https://www.google.com/recaptcha/api.js?hl=' . JFactory::getLanguage()->getTag();
-		}
+			// Load callback first for browser compatibility
+			JHtml::_('script', 'plg_captcha_recaptcha/recaptcha.min.js', array('version' => 'auto', 'relative' => true));
 
-		JHtml::_('script', $file);
+			$file = 'https://www.google.com/recaptcha/api.js?onload=JoomlaInitReCaptcha2&render=explicit&hl=' . JFactory::getLanguage()->getTag();
+			JHtml::_('script', $file);
+		}
 
 		return true;
 	}
@@ -79,14 +82,17 @@ class PlgCaptchaRecaptcha extends JPlugin
 	 */
 	public function onDisplay($name = null, $id = 'dynamic_recaptcha_1', $class = '')
 	{
-		if ($this->params->get('version', '1.0') == '1.0')
+		if ($this->params->get('version', '1.0') === '1.0')
 		{
 			return '<div id="' . $id . '" ' . $class . '></div>';
 		}
 		else
 		{
-			return '<div id="' . $id . '" ' . str_replace('class="', 'class="g-recaptcha ', $class) .
-					' data-sitekey="' . $this->params->get('public_key', '') . '" data-theme="' . $this->params->get('theme2', 'light') . '"></div>';
+			return '<div id="' . $id . '" ' . str_replace('class="', 'class="g-recaptcha ', $class)
+					. ' data-sitekey="' . $this->params->get('public_key', '')
+					. '" data-theme="' . $this->params->get('theme2', 'light')
+					. '" data-size="' . $this->params->get('size', 'normal')
+					. '"></div>';
 		}
 	}
 
@@ -111,13 +117,13 @@ class PlgCaptchaRecaptcha extends JPlugin
 			case '1.0':
 				$challenge = $input->get('recaptcha_challenge_field', '', 'string');
 				$response  = $input->get('recaptcha_response_field', '', 'string');
-				$spam      = ($challenge == null || strlen($challenge) == 0 || $response == null || strlen($response) == 0);
+				$spam      = ($challenge === '' || $response === '');
 				break;
 			case '2.0':
 				// Challenge Not needed in 2.0 but needed for getResponse call
 				$challenge = null;
 				$response  = $input->get('g-recaptcha-response', '', 'string');
-				$spam      = ($response == null || strlen($response) == 0);
+				$spam      = ($response === '');
 				break;
 		}
 
@@ -193,12 +199,15 @@ class PlgCaptchaRecaptcha extends JPlugin
 				$reCaptcha = new JReCaptcha($privatekey);
 				$response  = $reCaptcha->verifyResponse($remoteip, $response);
 
-				if ( !isset($response->success) || !$response->success)
+				if (!isset($response->success) || !$response->success)
 				{
 					// @todo use exceptions here
-					foreach ($response->errorCodes as $error)
+					if (is_array($response->errorCodes))
 					{
-						$this->_subject->setError($error);
+						foreach ($response->errorCodes as $error)
+						{
+							$this->_subject->setError($error);
+						}
 					}
 
 					return false;
@@ -220,7 +229,7 @@ class PlgCaptchaRecaptcha extends JPlugin
 	 */
 	private function _recaptcha_qsencode($data)
 	{
-		$req = "";
+		$req = '';
 
 		foreach ($data as $key => $value)
 		{
@@ -259,7 +268,7 @@ class PlgCaptchaRecaptcha extends JPlugin
 
 		$response = '';
 
-		if (($fs = @fsockopen($host, $port, $errno, $errstr, 10)) == false )
+		if (($fs = @fsockopen($host, $port, $errno, $errstr, 10)) === false)
 		{
 			die('Could not open socket');
 		}
